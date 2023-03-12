@@ -21,6 +21,6 @@ obj/%.o: src/%.c
 .PHONY: clean run
 
 clean:
-	rm -rf a.out obj/*.o obj/*.d
+	rm -f a.out obj/*.o obj/*.d
 run:
 	./a.out
