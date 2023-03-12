@@ -1,4 +1,4 @@
-obj/hello.o: src/hello.c /usr/include/stdc-predef.h \
+obj/parse.o: src/parse.c /usr/include/stdc-predef.h \
  include/network-programming.h /usr/include/stdio.h \
  /usr/include/aarch64-linux-gnu/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/aarch64-linux-gnu/sys/cdefs.h \

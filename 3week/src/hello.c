@@ -2,34 +2,21 @@
 
 int main()
 {
-	char buffer[100];
-	char * parse = NULL;
+	char buffer[5000];
+	char * split = NULL;
 	char * save_p = NULL;
 
 	while(1)
 	{
 		printf("%%");
-		fgets(buffer, 100, stdin);
-		int state = 1;
+		fgets(buffer, 5000, stdin);
 
-		parse = strtok_r(buffer, " \n", &save_p);
-		if(parse != NULL)
+		split = strtok_r(buffer, "|\n", &save_p);
+		if(split != NULL)
 		{
-			printf("%s", parse);
-		}
-
-		while(state)
-		{
-			parse = strtok_r(NULL, " \n ", &save_p);
-			if(parse != NULL)
-			{
-				printf("\n%s", parse);
-			}
-			else
-			{
-				state = 0;
-				printf("\n");
-			}
+			parse(split, save_p);
 		}
 	}
+
+//	execlp("ls","ls","-l","-a",NULL);
 }
