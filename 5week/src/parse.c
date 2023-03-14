@@ -77,7 +77,7 @@ int parse(char * command)
 				dup2(pipe_fd[0], STDIN_FILENO);
 				close(pipe_fd[0]);
 
-				execv("./bin/more",NULL);
+				execv("./bin/test",NULL);
 				exit(0);
 			}
 			else

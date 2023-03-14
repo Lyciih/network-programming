@@ -1,0 +1,29 @@
+CFLAG = -Wall -g -I include -MD
+
+SRCS = $(wildcard src/*.c)
+OBJS = $(patsubst src/%.c, object/%.o, ${SRCS})
+DEPS = $(OBJS:.o=.d)
+
+
+
+all: a.out bin/number
+
+-include $(DEPS)  #這行如果放在 all 之前,修改 .h 檔後 , make只會更新 .o 檔，最終的執行檔不會重新產生
+
+a.out: $(OBJS)
+	gcc -Wall -g -o $@ $^ 
+
+object/%.o: src/%.c
+	gcc $(CFLAG) -c $<  -o $@
+
+bin/number: bin/number.cpp
+	g++ bin/number.cpp -o bin/number
+
+
+
+.PHONY: clean run
+
+clean:
+	rm -f a.out obj/*.o obj/*.d bin/number
+run:
+	./a.out
