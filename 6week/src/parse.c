@@ -183,9 +183,6 @@ int parse(char * command)
 				}
 				else if(strcmp(arg[0], "setenv") == 0)
 				{
-				}
-				if(strcmp(arg[0], "setenv") == 0)
-				{
 					setenv(arg[1],arg[2], 1);
 				}
 				else
