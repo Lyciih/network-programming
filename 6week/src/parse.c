@@ -123,20 +123,31 @@ int parse(char * command)
 
 				if(strcmp(arg[0], "ls") == 0)
 				{
-					execv("./bin/ls",NULL);
+					execv("./bin/ls",arg);
 				}
 				else if(strcmp(arg[0], "more") == 0)
 				{
-					execv("./bin/more",NULL);
+					execv("./bin/more",arg);
 				}
 				else if(strcmp(arg[0], "number") == 0)
 				{
-					execv("./bin/number",NULL);
+					execv("./bin/number",arg);
+				}
+				else if(strcmp(arg[0], "cat") == 0)
+				{
+					execv("./bin/cat",arg);
+				}
+				else if(strcmp(arg[0], "printenv") == 0)
+				{
+					printf("%s\n", getenv(arg[1]));
+					exit(0);
+				}
+				else if(strcmp(arg[0], "setenv") == 0)
+				{
+					exit(0);
 				}
 				else
 				{
-					dup2(1, STDOUT_FILENO);
-					printf("unknow\n");
 					exit(0);
 				}
 			}
@@ -154,6 +165,33 @@ int parse(char * command)
 				read(pipe_c_p[0], buffer, sizeof(buffer));
 				close(pipe_c_p[0]);
 
+				if(strcmp(arg[0], "ls") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "more") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "number") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "cat") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "printenv") == 0)
+				{
+				
+				}
+				else if(strcmp(arg[0], "setenv") == 0)
+				{
+				}
+				if(strcmp(arg[0], "setenv") == 0)
+				{
+					setenv(arg[1],arg[2], 1);
+				}
+				else
+				{
+					printf("Unknow command: [%s].\n", arg[0]);
+				}
 			}
 		}
 		else
@@ -179,24 +217,43 @@ int parse(char * command)
 
 				if(strcmp(arg[0], "ls") == 0)
 				{
-					execv("./bin/ls",NULL);
+					execv("./bin/ls",arg);
 				}
 				else if(strcmp(arg[0], "more") == 0)
 				{
-					execv("./bin/more",NULL);
+					execv("./bin/more",arg);
 				}
 				else if(strcmp(arg[0], "number") == 0)
 				{
-					execv("./bin/number",NULL);
+					execv("./bin/number",arg);
+				}
+				else if(strcmp(arg[0], "cat") == 0)
+				{
+					execv("./bin/cat",arg);
+				}
+				else if(strcmp(arg[0], "printenv") == 0)
+				{
+					printf("%s\n", getenv(arg[1]));
+					exit(0);
+				}
+				else if(strcmp(arg[0], "setenv") == 0)
+				{
+					exit(0);
 				}
 				else
 				{
-					printf("unknow\n");
+					printf("Unknow command: [%s].\n", arg[0]);
 					exit(0);
 				}
 			}
 			else
 			{
+				if(strcmp(arg[0], "setenv") == 0)
+				{
+					setenv(arg[1],arg[2], 1);
+				}
+
+
 				close(pipe_p_c[0]);
 				//寫			
 				write(pipe_p_c[1], buffer, strlen(buffer));
