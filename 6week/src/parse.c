@@ -1,7 +1,35 @@
 #include "network-programming.h"
 
+int count_list_update(dllNode_t * count_list)
+{
+	dllNode_t * current = count_list;
 
-int parse(char * command)
+	while(current->next != NULL)
+	{
+		current = current->next;
+		((number_temp *)current)->count--;
+	}
+	return 0;
+}
+
+
+number_temp * count_list_check(dllNode_t * count_list)
+{
+	dllNode_t * current = count_list;
+
+	while(current->next != NULL)
+	{
+		current = current->next;
+		if(((number_temp *)current)->count == 0)
+		{
+			return (number_temp *)current;
+		}
+	}
+	return NULL;
+}
+
+
+int parse(char * command, dllNode_t * count_list)
 {
 	char * pipe_split = NULL;
 	char * space_split = NULL;
@@ -42,7 +70,7 @@ int parse(char * command)
 				break;
 			}
 
-			//檢查最後是否為數字---------------------------
+			//檢查最後是否為數字，前面幾次是多餘的只在最後一個指令才會發生作用
 			int check = 0;
 			while(check < strlen(pipe_split))
 			{
@@ -55,6 +83,12 @@ int parse(char * command)
 				{
 					check++;
 				}
+			}
+
+			if(not_number == 0)
+			{
+				printf("Unknow command: [%s].\n", pipe_split);
+				return 0;
 			}
 
 
@@ -79,6 +113,35 @@ int parse(char * command)
 				}
 			
 			}
+
+
+
+			if(strcmp(arg[0], "ls") == 0)
+			{
+				count_list_update(count_list);
+			}
+			else if(strcmp(arg[0], "more") == 0)
+			{
+				count_list_update(count_list);
+			}
+			else if(strcmp(arg[0], "number") == 0)
+			{
+				count_list_update(count_list);
+			}
+			else if(strcmp(arg[0], "cat") == 0)
+			{
+				count_list_update(count_list);
+			}
+			else if(strcmp(arg[0], "printenv") == 0)
+			{
+				count_list_update(count_list);
+			
+			}
+			else if(strcmp(arg[0], "setenv") == 0)
+			{
+				count_list_update(count_list);
+			}
+
 
 			first_time = 0;
 		}
@@ -132,6 +195,14 @@ int parse(char * command)
 
 		if(strcmp(arg[0], "quit") == 0)
 		{
+			while(count_list->next != NULL)
+			{
+				dllNode_t * temp = count_list->next;
+				DLL_delete(count_list->next);
+				free(((number_temp *)temp)->temp);
+				free(temp);
+			}
+			free(count_list);
 			exit(0);
 		}
 
@@ -190,9 +261,42 @@ int parse(char * command)
 			}
 			else
 			{
+				if(strcmp(arg[0], "ls") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "more") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "number") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "cat") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "printenv") == 0)
+				{
+				}
+				else if(strcmp(arg[0], "setenv") == 0)
+				{
+					setenv(arg[1],arg[2], 1);
+				}
+				else
+				{
+					printf("Unknow command: [%s].\n", arg[0]);
+				}
+
+
 				close(pipe_p_c[0]);
-				//寫的時候不要連沒用到的空白也寫進去，所以用strlen			
-				write(pipe_p_c[1], buffer, strlen(buffer));
+				//寫的時候不要連沒用到的空白也寫進去，所以用strlen
+				number_temp * zero = count_list_check(count_list);
+				if(zero != NULL)
+				{
+					write(pipe_p_c[1], zero->temp, strlen(zero->temp));
+				}
+				else
+				{
+					write(pipe_p_c[1], buffer, strlen(buffer));
+				}
 				close(pipe_p_c[1]);
 
 				wait(0);
@@ -201,117 +305,122 @@ int parse(char * command)
 				//讀的時候不知道對方有沒有裝滿，所要要全讀，用sizeof
 				read(pipe_c_p[0], buffer, sizeof(buffer));
 				close(pipe_c_p[0]);
-
-				if(strcmp(arg[0], "ls") == 0)
-				{
-				}
-				else if(strcmp(arg[0], "more") == 0)
-				{
-				}
-				else if(strcmp(arg[0], "number") == 0)
-				{
-				}
-				else if(strcmp(arg[0], "cat") == 0)
-				{
-				}
-				else if(strcmp(arg[0], "printenv") == 0)
-				{
-				
-				}
-				else if(strcmp(arg[0], "setenv") == 0)
-				{
-					setenv(arg[1],arg[2], 1);
-				}
-				else
-				{
-					printf("Unknow command: [%s].\n", arg[0]);
-				}
 			}
 		}
 		else
 		{
-			
-			child_pid = fork();
 
-			if(child_pid == -1)
+			if(not_number == 0)
 			{
-				printf("error");
-			}
-			else if(child_pid == 0)
-			{
-				//記得把寫端關掉，不然more會被子進程自己堵塞住
-
-				close(pipe_p_c[1]);
-
-				dup2(pipe_p_c[0], STDIN_FILENO);
-				close(pipe_p_c[0]);
-				
-				close(pipe_c_p[0]);
-				close(pipe_c_p[1]);
-
-				if(strcmp(arg[0], "ls") == 0)
+				number_temp * new = malloc(sizeof(number_temp));
+				if(new == NULL)
 				{
-					execv("./bin/ls",arg);
-				}
-				else if(strcmp(arg[0], "more") == 0)
-				{
-					execv("./bin/more",arg);
-				}
-				else if(strcmp(arg[0], "number") == 0)
-				{
-					execv("./bin/number",arg);
-				}
-				else if(strcmp(arg[0], "cat") == 0)
-				{
-					execv("./bin/cat",arg);
-				}
-				else if(strcmp(arg[0], "printenv") == 0)
-				{
-					printf("%s\n", getenv(arg[1]));
-					exit(0);
-				}
-				else if(strcmp(arg[0], "setenv") == 0)
-				{
-					exit(0);
-				}
-				else if(not_number == 0)
-				{
-					exit(0);
+					printf("not enough memory");
+					break;
 				}
 				else
 				{
-					printf("Unknow command: [%s].\n", arg[0]);
-					exit(0);
+					new->node.prev = NULL;
+					new->node.next = NULL;
+					new->count =  atoi(arg[0]);
+					new->temp = (char *)malloc(5000);
+					if(new->temp == NULL)
+					{
+						printf("not enough memory");
+						break;
+					}
+					else
+					{
+						strcpy(new->temp, buffer);
+						DLL_add_tail(&new->node, count_list);
+						break;
+					}
 				}
 			}
 			else
 			{
-				if(strcmp(arg[0], "setenv") == 0)
+			
+				child_pid = fork();
+
+				if(child_pid == -1)
 				{
-					setenv(arg[1],arg[2], 1);
+					printf("error");
 				}
-
-
-				if(not_number == 0)
+				else if(child_pid == 0)
 				{
-					printf("yes\n");
+					//記得把寫端關掉，不然more會被子進程自己堵塞住
+
+					close(pipe_p_c[1]);
+
+					dup2(pipe_p_c[0], STDIN_FILENO);
+					close(pipe_p_c[0]);
+					
+					close(pipe_c_p[0]);
+					close(pipe_c_p[1]);
+
+
+					if(strcmp(arg[0], "ls") == 0)
+					{
+						execv("./bin/ls",arg);
+					}
+					else if(strcmp(arg[0], "more") == 0)
+					{
+						execv("./bin/more",arg);
+					}
+					else if(strcmp(arg[0], "number") == 0)
+					{
+						execv("./bin/number",arg);
+					}
+					else if(strcmp(arg[0], "cat") == 0)
+					{
+						execv("./bin/cat",arg);
+					}
+					else if(strcmp(arg[0], "printenv") == 0)
+					{
+						printf("%s\n", getenv(arg[1]));
+						exit(0);
+					}
+					else if(strcmp(arg[0], "setenv") == 0)
+					{
+						exit(0);
+					}
+					else if(not_number == 0)
+					{
+						exit(0);
+					}
+					else
+					{
+						printf("Unknow command: [%s].\n", arg[0]);
+						exit(0);
+					}
 				}
+				else
+				{
 
 
-				close(pipe_p_c[0]);
-				//寫			
-				write(pipe_p_c[1], buffer, strlen(buffer));
-				close(pipe_p_c[1]);
-				
 
-				close(pipe_c_p[1]);
-				close(pipe_c_p[0]);
+					close(pipe_p_c[0]);
+					//寫			
+					number_temp * zero = count_list_check(count_list);
+					if(zero != NULL)
+					{
+						write(pipe_p_c[1], zero->temp, strlen(zero->temp));
+					}
+					else
+					{
+						write(pipe_p_c[1], buffer, strlen(buffer));
+					}
+					close(pipe_p_c[1]);
+					
 
-				wait(0);
+					close(pipe_c_p[1]);
+					close(pipe_c_p[0]);
+
+					wait(&child_pid);
+					return 0;
+				}
 			}
-			break;
 		}
 	}
-
 	return 0;
 }

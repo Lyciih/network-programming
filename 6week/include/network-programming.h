@@ -8,8 +8,16 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <ctype.h>
+#include <dllSpec.h>
 
 
-int parse(char * command);
+typedef struct number_temp{
+	dllNode_t node;
+	int count;
+	char * temp;
+}number_temp;
+
+
+int parse(char * command, dllNode_t * count_list);
 
 #endif

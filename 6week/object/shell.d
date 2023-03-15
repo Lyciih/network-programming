@@ -89,4 +89,5 @@ object/shell.o: src/shell.c /usr/include/stdc-predef.h \
  /usr/include/aarch64-linux-gnu/bits/ss_flags.h \
  /usr/include/aarch64-linux-gnu/bits/types/struct_sigstack.h \
  /usr/include/aarch64-linux-gnu/bits/sigthread.h \
- /usr/include/aarch64-linux-gnu/bits/signal_ext.h /usr/include/ctype.h
+ /usr/include/aarch64-linux-gnu/bits/signal_ext.h /usr/include/ctype.h \
+ include/dllSpec.h
