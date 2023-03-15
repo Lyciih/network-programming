@@ -9,6 +9,7 @@ int parse(char * command)
 	char * save_s = NULL;
 
 	char buffer[5000];
+	memset(buffer, 0, sizeof(buffer));
 
 
 	//分解參數
