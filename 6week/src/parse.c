@@ -11,7 +11,6 @@ int parse(char * command)
 	char buffer[5000];
 	memset(buffer, 0, sizeof(buffer));
 
-
 	//分解參數
 	char * arg[10] = {NULL};
 	int arg_count = 0;
@@ -31,6 +30,7 @@ int parse(char * command)
 		pipe(pipe_c_p);
 
 		arg_count = 0;
+		int not_number = 0;
 
 		//命令處理---------------------------------------------
 		if(first_time == 1)
@@ -41,6 +41,24 @@ int parse(char * command)
 			{
 				break;
 			}
+
+			//檢查最後是否為數字---------------------------
+			int check = 0;
+			while(check < strlen(pipe_split))
+			{
+				if(isdigit(*(pipe_split + check)) == 0)
+				{
+					not_number = 1;
+					break;
+				}
+				else
+				{
+					check++;
+				}
+			}
+
+
+			//----------------------------------------------
 
 			space_split = strtok_r(pipe_split, " \n", &save_s);
 			arg[0] = space_split;
@@ -72,6 +90,24 @@ int parse(char * command)
 			{
 				break;
 			}
+
+			//檢查最後是否為數字---------------------------
+			int check = 0;
+			while(check < strlen(pipe_split))
+			{
+				if(isdigit(*(pipe_split + check)) == 0)
+				{
+					not_number = 1;
+					break;
+				}
+				else
+				{
+					check++;
+				}
+			}
+
+
+			//----------------------------------------------
 
 			space_split = strtok_r(pipe_split, " \n", &save_s);
 			arg[0] = space_split;
@@ -238,6 +274,10 @@ int parse(char * command)
 				{
 					exit(0);
 				}
+				else if(not_number == 0)
+				{
+					exit(0);
+				}
 				else
 				{
 					printf("Unknow command: [%s].\n", arg[0]);
@@ -249,6 +289,12 @@ int parse(char * command)
 				if(strcmp(arg[0], "setenv") == 0)
 				{
 					setenv(arg[1],arg[2], 1);
+				}
+
+
+				if(not_number == 0)
+				{
+					printf("yes\n");
 				}
 
 
