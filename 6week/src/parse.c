@@ -231,19 +231,19 @@ int parse(char * command, dllNode_t * count_list)
 
 				if(strcmp(arg[0], "ls") == 0)
 				{
-					execv("./bin/ls",arg);
+					execvp("ls",arg);
 				}
 				else if(strcmp(arg[0], "more") == 0)
 				{
-					execv("./bin/more",arg);
+					execvp("more",arg);
 				}
 				else if(strcmp(arg[0], "number") == 0)
 				{
-					execv("./bin/number",arg);
+					execvp("number",arg);
 				}
 				else if(strcmp(arg[0], "cat") == 0)
 				{
-					execv("./bin/cat",arg);
+					execvp("cat",arg);
 				}
 				else if(strcmp(arg[0], "printenv") == 0)
 				{
@@ -361,19 +361,19 @@ int parse(char * command, dllNode_t * count_list)
 
 					if(strcmp(arg[0], "ls") == 0)
 					{
-						execv("./bin/ls",arg);
+						execvp("ls",arg);
 					}
 					else if(strcmp(arg[0], "more") == 0)
 					{
-						execv("./bin/more",arg);
+						execvp("more",arg);
 					}
 					else if(strcmp(arg[0], "number") == 0)
 					{
-						execv("./bin/number",arg);
+						execvp("number",arg);
 					}
 					else if(strcmp(arg[0], "cat") == 0)
 					{
-						execv("./bin/cat",arg);
+						execvp("cat",arg);
 					}
 					else if(strcmp(arg[0], "printenv") == 0)
 					{
@@ -398,6 +398,12 @@ int parse(char * command, dllNode_t * count_list)
 				{
 
 
+					//setenv只能在父進程做才有用
+
+					if(strcmp(arg[0], "setenv") == 0)
+					{
+						setenv(arg[1],arg[2], 1);
+					}
 
 					close(pipe_p_c[0]);
 					//寫			
