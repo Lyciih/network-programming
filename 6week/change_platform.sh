@@ -2,10 +2,13 @@
 
 
 make clean
+cd lib
+rm -f libdouble_link_list.a
 
-cd lib/double_link_list
+cd double_link_list
 make clean
 make
+cp libdouble_linked_list.a ../
 
 cd ../..
 make
