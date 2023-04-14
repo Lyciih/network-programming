@@ -4,6 +4,7 @@
 #include <string.h>		//memset()
 #include <sys/socket.h>
 #include <netinet/in.h>		//sockaddr_in
+#include <arpa/inet.h>
 
 int main()
 {
@@ -57,6 +58,7 @@ int main()
 	socklen_t len;
 	struct sockaddr_in client_addr;
 	len = sizeof(client_addr);
+	char client_ip[INET_ADDRSTRLEN];
 
 	if(connect_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &len) < 0)
 	{
@@ -65,7 +67,8 @@ int main()
 	}
 	else
 	{
-		printf("accept success\n");
+		inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+		printf("accept success %s\n", client_ip);
 		close(connect_fd);
 	}
 
