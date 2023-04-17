@@ -8,6 +8,7 @@
 int main()
 {
 	int client_fd = 0;
+	char buf[4096];
 	
 
 	//建立 socket
@@ -37,6 +38,8 @@ int main()
 	else
 	{
 		printf("connect success\n");
+		read(client_fd, buf, 4096);
+		printf("%s\n", buf);
 	}
 
 

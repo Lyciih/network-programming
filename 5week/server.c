@@ -10,6 +10,8 @@ int main()
 {
 	int listen_fd = 0;
 	int connect_fd = 0;
+	char buf[] = "hello";
+	int send_state;
 
 	//申請用來 listen 的socket
 	if((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -60,7 +62,7 @@ int main()
 	len = sizeof(client_addr);
 	char client_ip[INET_ADDRSTRLEN];
 
-	if(connect_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &len) < 0)
+	if((connect_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &len)) < 0)
 	{
 		perror("accept error\n");
 		exit(1);
@@ -68,7 +70,12 @@ int main()
 	else
 	{
 		inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-		printf("accept success %s\n", client_ip);
+		printf("accept success from %s\n", client_ip);
+		
+		if((send_state = send(connect_fd, buf, sizeof(buf), 0)) < 0)
+		{
+			perror("\n");
+		}
 		close(connect_fd);
 	}
 
