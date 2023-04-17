@@ -10,8 +10,10 @@ int main()
 {
 	int listen_fd = 0;
 	int connect_fd = 0;
-	char buf[] = "hello\n";
+	char buf[4096];
 	int send_state;
+	int read_count;
+	int child_pid;
 
 	//申請用來 listen 的socket
 	if((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -62,21 +64,50 @@ int main()
 	len = sizeof(client_addr);
 	char client_ip[INET_ADDRSTRLEN];
 
-	if((connect_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &len)) < 0)
+	while(1)
 	{
-		perror("accept error\n");
-		exit(1);
-	}
-	else
-	{
-		inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-		printf("accept success from %s\n", client_ip);
-		
-		if((send_state = send(connect_fd, buf, sizeof(buf), 0)) < 0)
+		if((connect_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &len)) < 0)
 		{
-			perror("\n");
+			perror("accept error\n");
+			exit(1);
 		}
-		close(connect_fd);
+		else
+		{
+			child_pid = fork();
+
+			if(child_pid == -1)
+			{
+				perror("server fork error");
+			}
+			else if(child_pid == 0)
+			{
+				inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+				printf("accept success from %s\n", client_ip);
+			
+				if((send_state = send(connect_fd, "hello\n", sizeof("hello\n"), 0)) < 0)
+				{
+					perror("\n");
+				}
+
+				while(1)
+				{
+
+					read_count = read(connect_fd, buf, 4096);
+					printf("%s", buf);
+					if(*buf == 'b' && *(buf + 1) == 'y' && *(buf + 2) == 'e' && (*(buf + 3) == ' ' || *(buf + 3) == '\r' || *(buf + 3) == '\n'))
+					{
+ 						send(connect_fd, "bye\n", sizeof("bye\n"), 0);
+						break;
+					}
+					memset(buf, 0, read_count);
+				}
+				printf("%s leaved\n", client_ip);
+				close(connect_fd);
+			}
+			else
+			{
+			}
+		}
 	}
 
 	
