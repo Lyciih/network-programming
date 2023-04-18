@@ -27,7 +27,6 @@ int command_need_fork(char * command, size_t command_len, char * arg[], char * b
 	{
 		if(*save_p != '\0')
 		{
-			//printf("here1\n");
 			close(pipe_p_c[1]);
 			dup2(pipe_p_c[0], STDIN_FILENO);
 			close(pipe_p_c[0]);
@@ -40,7 +39,6 @@ int command_need_fork(char * command, size_t command_len, char * arg[], char * b
 		}
 		else
 		{
-			//printf("here2\n");
 			close(pipe_p_c[1]);
 			dup2(pipe_p_c[0], STDIN_FILENO);
 			close(pipe_p_c[0]);
@@ -66,7 +64,6 @@ int command_need_fork(char * command, size_t command_len, char * arg[], char * b
 		}
 		else
 		{
-			//printf("w test %s\n", buffer);
 			write(pipe_p_c[1], buffer, strlen(buffer));
 		}
 		close(pipe_p_c[1]);
@@ -77,7 +74,6 @@ int command_need_fork(char * command, size_t command_len, char * arg[], char * b
 		if(*save_p != '\0')
 		{
 			read(pipe_c_p[0], buffer, 5000);
-			//printf("r test %s\n", buffer);
 		}
 		close(pipe_c_p[0]);
 	}

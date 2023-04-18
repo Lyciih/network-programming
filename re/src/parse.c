@@ -2,14 +2,17 @@
 
 
 //用來更新buffer計數器
-int count_list_update(dllNode_t * count_list)
+int count_list_update(dllNode_t * count_list, int first_time)
 {
-	dllNode_t * current = count_list;
-
-	while(current->next != NULL)
+	if(first_time == 1)
 	{
-		current = current->next;
-		((number_temp *)current)->count--;
+		dllNode_t * current = count_list;
+
+		while(current->next != NULL)
+		{
+			current = current->next;
+			((number_temp *)current)->count--;
+		}
 	}
 	return 0;
 }
@@ -49,6 +52,8 @@ int parse(char * command, dllNode_t * count_list)
 	//用來紀錄是否是每行的首個指令的狀態
 	int first_time = 1;
 
+	char * getenv_state;
+	int setenv_state;
 	
 	while(1)
 	{
@@ -93,54 +98,18 @@ int parse(char * command, dllNode_t * count_list)
 		}
 
 
-		if(not_number == 0)
+		//如果第一個指令就是數字,視為無效,退出分析函數
+		if(first_time == 1)
 		{
-			//如果第一個指令就是數字,視為無效,退出分析函數
-			if(first_time == 1)
+			if(not_number == 0)
 			{
 				printf("Unknow command: [%s].\n", pipe_split);
 				return 0;
 			}
-			else
-			{
-				//如果最後一個指令是數字,就新增一個節點,把buffer存起來
-				if(*save_p == '\0')
-				{
-					number_temp * new = malloc(sizeof(number_temp));
-					if(new == NULL)
-					{
-						printf("not enough memory");
-						break;
-					}
-					else
-					{
-						new->node.prev = NULL;
-						new->node.next = NULL;
-						new->count =  atoi(arg[0]);
-						new->temp = (char *)malloc(5000);
-						if(new->temp == NULL)
-						{
-							printf("not enough memory");
-							break;
-						}
-						else
-						{
-							//把buffer的資料複製進節點
-							strcpy(new->temp, buffer);
-							//加進串列
-							DLL_add_tail(&new->node, count_list);
-							return 0;
-						}
-					}
-				}
-			}
 		}
 
-		//只有第一次切割時會是1,之後都會是0
-		if(first_time == 1)
-		{
-			first_time = 0;
-		}
+		
+
 
 		//將剛剛拿到的指令段以空白切割,取得所有參數
 
@@ -168,36 +137,48 @@ int parse(char * command, dllNode_t * count_list)
 		//比對是否為可執行的指令,是的話就更新buffer計數器
 		if(strcmp(arg[0], "ls") == 0)
 		{
-			count_list_update(count_list);
+			count_list_update(count_list, first_time);
 			command_need_fork(arg[0], sizeof(arg[0]), arg, buffer, save_p, count_list);
 		}
 		else if(strcmp(arg[0], "more") == 0)
 		{
+			count_list_update(count_list, first_time);
 			command_need_fork(arg[0], sizeof(arg[0]), arg, buffer, save_p, count_list);
-			count_list_update(count_list);
 		}
 		else if(strcmp(arg[0], "number") == 0)
 		{
+			count_list_update(count_list, first_time);
 			command_need_fork(arg[0], sizeof(arg[0]), arg, buffer, save_p, count_list);
-			count_list_update(count_list);
 		}
 		else if(strcmp(arg[0], "cat") == 0)
 		{
+			count_list_update(count_list, first_time);
 			command_need_fork(arg[0], sizeof(arg[0]), arg, buffer, save_p, count_list);
-			count_list_update(count_list);
 		}
 		else if(strcmp(arg[0], "printenv") == 0)
 		{
-			count_list_update(count_list);
-			printf("%s\n", getenv(arg[1]));
-		
+			count_list_update(count_list, first_time);
+
+			getenv_state = getenv(arg[1]);
+			if(getenv_state != NULL)
+			{
+				printf("%s\n", getenv_state);
+			}
+			else
+			{
+				printf("getenv error\n");
+			}
 		}
 		else if(strcmp(arg[0], "setenv") == 0)
 		{
 
-			count_list_update(count_list);
+			count_list_update(count_list, first_time);
 			//改變環境變數要在主進程做
-			setenv(arg[1],arg[2], 1);
+			setenv_state = setenv(arg[1],arg[2], 1);
+			if(setenv_state != 0)
+			{
+				printf("setenv error\n");
+			}
 		}
 		else if(strcmp(arg[0], "quit") == 0)
 		{
@@ -211,9 +192,54 @@ int parse(char * command, dllNode_t * count_list)
 			free(count_list);
 			exit(0);
 		}
+		else if(*save_p == '\0')
+		{
+			//如果最後一個指令是數字,就新增一個節點,把buffer存起來
+			if(not_number == 0)
+			{
+				number_temp * new = malloc(sizeof(number_temp));
+				if(new == NULL)
+				{
+					printf("not enough memory");
+					break;
+				}
+				else
+				{
+					new->node.prev = NULL;
+					new->node.next = NULL;
+					new->count =  atoi(arg[0]);
+					new->temp = (char *)malloc(5000);
+					if(new->temp == NULL)
+					{
+						printf("not enough memory");
+						break;
+					}
+					else
+					{
+						//把buffer的資料複製進節點
+						strcpy(new->temp, buffer);
+						//加進串列
+						DLL_add_tail(&new->node, count_list);
+						return 0;
+					}
+				}
+			}
+			else
+			{
+				printf("Unknow command: [%s].\n", arg[0]);
+				return 0;
+			}
+		}
 		else
 		{
 			printf("Unknow command: [%s].\n", arg[0]);
+
+		}
+		
+		//只有第一次切割時會是1,之後都會是0
+		if(first_time == 1)
+		{
+			first_time = 0;
 		}
 	}
 	return 0;

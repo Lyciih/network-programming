@@ -17,7 +17,7 @@ typedef struct number_temp{
 	char * temp;
 }number_temp;
 
-int count_list_update(dllNode_t * count_list);
+int count_list_update(dllNode_t * count_list, int first_time);
 number_temp * count_list_check(dllNode_t * count_list);
 int parse(char * command, dllNode_t * count_list);
 int command_need_fork(char * command, size_t command_len, char * arg[], char * buffer, char * save_p, dllNode_t * count_list);
