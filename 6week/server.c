@@ -5,6 +5,27 @@
 #include <sys/socket.h>
 #include <netinet/in.h>		//sockaddr_in
 #include <arpa/inet.h>
+#include <signal.h>
+
+
+void sigint_handler(int signal, siginfo_t *info, void *ctx)
+{
+	if(signal == SIGINT)
+	{
+		printf("\n%d\n",info->si_value.sival_int);
+	}
+}
+
+void set_signal_action(void)
+{
+	struct sigaction act;
+	memset(&act, 0, sizeof(act));
+	act.sa_sigaction = sigint_handler;
+	act.sa_flags = SA_SIGINFO;
+
+	sigaction(SIGINT, &act, NULL);
+}
+
 
 int main()
 {
@@ -14,6 +35,7 @@ int main()
 	int send_state;
 	int read_count;
 	int child_pid;
+
 
 	//申請用來 listen 的socket
 	if((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -97,6 +119,11 @@ int main()
 					if(*buf == 'b' && *(buf + 1) == 'y' && *(buf + 2) == 'e' && (*(buf + 3) == ' ' || *(buf + 3) == '\r' || *(buf + 3) == '\n'))
 					{
  						send(connect_fd, "bye\n", sizeof("bye\n"), 0);
+						//發訊號給 parent 以關閉 socket
+						sigval_t ID;
+						ID.sival_int = getpid();
+
+						sigqueue(getppid(), SIGINT, ID);
 						break;
 					}
 					memset(buf, 0, read_count);
@@ -106,6 +133,7 @@ int main()
 			}
 			else
 			{
+				set_signal_action();
 			}
 		}
 	}
