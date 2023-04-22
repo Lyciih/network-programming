@@ -43,21 +43,21 @@ int client_leave(dllNode_t * client, int leave_pid)
 
 void sigint_handler(int signal, siginfo_t *info, void *ctx)
 {
-	if(signal == SIGUSR1)
+	if(signal == SIGCHLD)
 	{
 		//printf("\n%d\n",info->si_value.sival_int);
-		client_leave(client_list, info->si_value.sival_int);
+		client_leave(client_list, info->si_pid);
 	}
 }
 
-void set_signal_action(void)
+void set_signal_child_terminate_action(void)
 {
 	struct sigaction act;
 	memset(&act, 0, sizeof(act));
 	act.sa_sigaction = sigint_handler;
 	act.sa_flags = SA_SIGINFO;
 
-	sigaction(SIGUSR1, &act, NULL);
+	sigaction(SIGCHLD, &act, NULL);
 }
 
 
@@ -70,7 +70,7 @@ int main()
 	client_list = DLL_init();
 
 
-	set_signal_action();
+	set_signal_child_terminate_action();
 
 	//申請用來 listen 的socket
 	if((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)

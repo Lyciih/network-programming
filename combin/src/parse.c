@@ -191,9 +191,10 @@ int parse(char * command, dllNode_t * count_list,int connect_fd)
 			}
 			free(count_list);
 			close(connect_fd);
-			sigval_t leave_ID;
-			leave_ID.sival_int = getpid();
-			sigqueue(getppid(), SIGUSR1, leave_ID);
+		
+			//sigval_t leave_ID;
+			//leave_ID.sival_int = getpid();
+			//sigqueue(getppid(), SIGUSR1, leave_ID);
 			exit(0);
 		}
 		else if(*save_p == '\0')
