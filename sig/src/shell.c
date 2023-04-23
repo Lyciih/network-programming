@@ -82,6 +82,9 @@ int client_leave(dllNode_t * client, int leave_pid)
 			printf("%s leaved\n", ((client_data *)current)->ip);
 			DLL_delete(current);
 			free(current);
+			current = NULL;
+			//這裡要直接 return ，因為下一步while判斷式存取被free的地址會出錯
+			return 0;
 		}
 	}
 	return 0;
@@ -115,12 +118,22 @@ void client_leave_handler(int signal, siginfo_t *info, void *ctx)
 void server_op_handler(int signal, siginfo_t *info, void *ctx)
 {
 	int client_fd;
+	client_data * client_information;
 	char who_table[] = "<ID> <name>	<IP:port>	<indicate me>\n";
 
 	if(info->si_value.sival_int == 0)
 	{
 		client_fd = get_client_socket_fd(client_list, info->si_pid);
 		send(client_fd, who_table, sizeof(who_table), 0);
+		dllNode_t * current = client_list;
+		while(current->next != NULL)
+		{
+			current = current->next;
+			client_information = (client_data *)current;
+			send(client_fd, client_information->name, 30, 0);
+			send(client_fd, client_information->ip, 20, 0);
+			send(client_fd, "\n", sizeof("\n"), 0);
+		}
 		send(client_fd, "% ", sizeof("% "), 0);
 	}
 	else if(info->si_value.sival_int == 1)
