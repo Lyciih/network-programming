@@ -22,33 +22,43 @@ int client_add(client_data * new, dllNode_t * client)
 		current = client;		
 		current = current->next;
 
-		if(((client_data *)current)->ID - 0 != 1)
+		if((((client_data *)current)->ID) > 0)
 		{
 			DLL_addto_prev(&new->node, current);
-			new->ID = 1;
+			new->ID = 0;
 			return 0;
 		}
 		else
 		{
-			while(current->next != NULL)
+			if(current->next == NULL)
 			{
 				id_current = ((client_data *)current)->ID;
-				id_next = ((client_data *)(current->next))->ID;
-				if(id_next - id_current != 1)
-				{
-					DLL_addto_next(&new->node, current);
-					new->ID = id_current + 1;
-					return 0;
-				}
-				else
-				{
-					current = current->next;
-				}
+				DLL_addto_next(&new->node, current);
+				new->ID = 1;
+				return 0;
 			}
-			id_current = ((client_data *)current)->ID;
-			DLL_addto_next(&new->node, current);
-			new->ID = id_current + 1;
-			return 0;
+			else
+			{
+				while(current->next != NULL)
+				{
+					id_current = ((client_data *)current)->ID;
+					id_next = ((client_data *)(current->next))->ID;
+					if((id_next - id_current) > 1)
+					{
+						DLL_addto_next(&new->node, current);
+						new->ID = id_current + 1;
+						return 0;
+					}
+					else
+					{
+						current = current->next;
+					}
+				}
+				id_current = ((client_data *)current)->ID;
+				DLL_addto_next(&new->node, current);
+				new->ID = id_current + 1;
+				return 0;
+			}
 		}
 	}
 }
@@ -111,6 +121,7 @@ int get_client_socket_fd(dllNode_t * client, int client_pid)
 
 void client_leave_handler(int signal, siginfo_t *info, void *ctx)
 {
+	waitpid(info->si_pid, 0, WNOHANG);
 	client_leave(client_list, info->si_pid);
 }
 
@@ -119,7 +130,8 @@ void server_op_handler(int signal, siginfo_t *info, void *ctx)
 {
 	int client_fd;
 	client_data * client_information;
-	char who_table[] = "<ID> <name>	<IP:port>	<indicate me>\n";
+	char who_table[] = "<ID>   <name>     <IP:port>                <indicate me>\n";
+	char format_buf[100];
 
 	if(info->si_value.sival_int == 0)
 	{
@@ -130,8 +142,25 @@ void server_op_handler(int signal, siginfo_t *info, void *ctx)
 		{
 			current = current->next;
 			client_information = (client_data *)current;
-			send(client_fd, client_information->name, 30, 0);
-			send(client_fd, client_information->ip, 20, 0);
+			if(client_fd == client_information->socket_fd)
+			{
+				sprintf(format_buf, "%4d   %s    %-15s:%5d    <-(me)", 
+						client_information->ID,
+						client_information->name,
+						client_information->ip,
+						client_information->port
+						);
+			}
+			else
+			{
+				sprintf(format_buf, "%4d   %s    %-15s:%5d", 
+						client_information->ID,
+						client_information->name,
+						client_information->ip,
+						client_information->port
+						);
+			}
+			send(client_fd, format_buf, strlen(format_buf), 0);
 			send(client_fd, "\n", sizeof("\n"), 0);
 		}
 		send(client_fd, "% ", sizeof("% "), 0);
