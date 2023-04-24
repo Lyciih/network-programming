@@ -34,7 +34,7 @@ clean:
 	rm -f server shell object/*.o object/*.d bin/number bin/ls bin/more bin/cat
 
 run:
-	./shell
+	./shell 0.0.0.0 1223
 
 netstat:
 	netstat -a|grep 3000

@@ -133,8 +133,8 @@ void client_leave_handler(int signal, siginfo_t *info, void *ctx)
 
 void name_handler(siginfo_t *info)
 {
-	client_data * client_information;
-	client_data * other_client_information;
+	client_data * client_information = NULL;
+	client_data * other_client_information = NULL;
 	int client_fd;
 	char name_buf[15];
 	memset(name_buf, 0, 15);
@@ -168,7 +168,7 @@ void name_handler(siginfo_t *info)
 void who_handler(siginfo_t *info)
 {
 	int client_fd;
-	client_data * client_information;
+	client_data * client_information = NULL;
 	char who_table[] = "<ID>   <name>             <IP:port>                <indicate me>\n";
 	char format_buf[69];
 
@@ -182,7 +182,7 @@ void who_handler(siginfo_t *info)
 		client_information = (client_data *)current;
 		if(client_fd == client_information->socket_fd)
 		{
-			sprintf(format_buf, "%4d   %-15s    %-15s:%5d    <-(me)", 
+			sprintf(format_buf, "%4d   %-15s    %-15s:%5d    <-(me)\n", 
 					client_information->ID,
 					client_information->name,
 					client_information->ip,
@@ -191,7 +191,7 @@ void who_handler(siginfo_t *info)
 		}
 		else
 		{
-			sprintf(format_buf, "%4d   %-15s    %-15s:%5d", 
+			sprintf(format_buf, "%4d   %-15s    %-15s:%5d\n", 
 					client_information->ID,
 					client_information->name,
 					client_information->ip,
@@ -199,39 +199,95 @@ void who_handler(siginfo_t *info)
 					);
 		}
 		send(client_fd, format_buf, strlen(format_buf), 0);
-		send(client_fd, "\n", sizeof("\n"), 0);
 	}
 	send(client_fd, "% ", sizeof("% "), 0);
 }
 
 
-void server_op_handler(int signal, siginfo_t *info, void *ctx)
+void yell_handler(siginfo_t *info)
 {
-	int client_fd;
+	client_data * client_information = NULL;
+	client_data * other_client_information = NULL;
+	char message_buf[251];
+	memset(message_buf, 0, 251);
+	char format_buf[282];
 
+	client_information = get_client_data(client_list, info->si_pid);
+	read(client_information->server_op_pipe, message_buf, 251);
+
+
+	sprintf(format_buf, "<user(%d) yelled>: %s\n%% ",
+			client_information->ID, 
+			message_buf
+			);
+
+	dllNode_t * current = client_list;
+
+	while(current->next != NULL)
+	{
+		current = current->next;
+		other_client_information = (client_data *)current;
+		send(other_client_information->socket_fd, format_buf, strlen(format_buf), 0);
+	}
+	return;
+}
+
+
+
+void server_op1_handler(int signal, siginfo_t *info, void *ctx)
+{
 	if(info->si_value.sival_int == 0)
 	{
 		who_handler(info);
 	}
 	else if(info->si_value.sival_int == 1)
 	{
-		client_fd = get_client_data(client_list, info->si_pid)->socket_fd;
-		send(client_fd, "tell\n", sizeof("tell\n"), 0);
-		send(client_fd, "% ", sizeof("% "), 0);
+		yell_handler(info);
 	}
 	else if(info->si_value.sival_int == 2)
-	{
-		client_fd = get_client_data(client_list, info->si_pid)->socket_fd;
-		send(client_fd, "yell\n", sizeof("yell\n"), 0);
-		send(client_fd, "% ", sizeof("% "), 0);
-	}
-	else if(info->si_value.sival_int == 3)
 	{
 		name_handler(info);
 	}
 }
 
 
+void server_op2_handler(int signal, siginfo_t *info, void *ctx)
+{
+	int target_ID = info->si_value.sival_int;
+	
+	client_data * client_information = NULL;
+	int client_fd;
+	char message_buf[251];
+	memset(message_buf, 0, 251);
+	char format_buf[282];
+
+
+	client_information = get_client_data(client_list, info->si_pid);
+	client_fd = client_information->socket_fd;
+	read(client_information->server_op_pipe, message_buf, 251);
+
+	sprintf(format_buf, "<user(%d) told you>: %s\n%% ",
+			client_information->ID, 
+			message_buf
+			);
+
+
+	dllNode_t * current = client_list;
+	
+	while(current->next != NULL)
+	{
+		current = current->next;
+		client_information = (client_data *)current;
+		if(target_ID == client_information->ID)
+		{
+			send(client_information->socket_fd, format_buf, strlen(format_buf), 0);
+			send(client_fd, "send accept!\n% ", sizeof("send accept!\n% "), 0);
+			return;
+		}
+	}	
+	send(client_fd, "no this ID\n% ", sizeof("no this ID\n% "), 0);
+	return;
+}
 
 
 void set_signal_child_terminate_action(void)
@@ -245,30 +301,48 @@ void set_signal_child_terminate_action(void)
 }
 
 
-void set_signal_server_op_action(void)
+void set_signal_server_op1_action(void)
 {
 	struct sigaction act;
 	memset(&act, 0, sizeof(act));
-	act.sa_sigaction = server_op_handler;
+	act.sa_sigaction = server_op1_handler;
 	act.sa_flags = SA_SIGINFO;
 
 	sigaction(34, &act, NULL);
 }
 
-int main()
+
+void set_signal_server_op2_action(void)
+{
+	struct sigaction act;
+	memset(&act, 0, sizeof(act));
+	act.sa_sigaction = server_op2_handler;
+	act.sa_flags = SA_SIGINFO;
+
+	sigaction(35, &act, NULL);
+}
+
+
+int main(int argc, char ** argv)
 {
 	int listen_fd = 0;
 	int connect_fd = 0;
 	int send_state;
 	int child_pid;
 	int pipe_server_op[2];
-	
+
+	if(argc != 3)
+	{
+		printf("arg need ip and port\n");
+		exit(1);
+	}
 
 	client_list = DLL_init();
 
 
 	set_signal_child_terminate_action();
-	set_signal_server_op_action();
+	set_signal_server_op1_action();
+	set_signal_server_op2_action();
 
 	//申請用來 listen 的socket
 	if((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -286,8 +360,13 @@ int main()
 	struct sockaddr_in server_addr;
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	server_addr.sin_port = htons(1223);
+	//server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	if(inet_pton(AF_INET, argv[1], &server_addr.sin_addr) <= 0)
+	{
+		printf( "ip addres error\n");
+		exit(1);
+	}
+	server_addr.sin_port = htons(atoi(argv[2]));
 
 	//bind
 	if((bind(listen_fd,(struct sockaddr *)&server_addr, sizeof(server_addr)) < 0))
@@ -372,11 +451,22 @@ int main()
 				
 				while(1)
 				{
+					int count;
 
-					read(connect_fd, command_buffer, 256);
-					char * cut = strstr(command_buffer, "\r\n");
-					*cut = '\0';
-					parse(command_buffer, count_list, connect_fd, pipe_server_op[1]);
+					count = read(connect_fd, command_buffer, 256);
+					if(count >= 255)
+					{
+						send(connect_fd, "command too long\n% ", sizeof("command too long\n%% "), 0);
+					}
+					else
+					{
+						char * cut = strstr(command_buffer, "\r\n");
+						if(cut != NULL)
+						{
+							*cut = '\0';
+							parse(command_buffer, count_list, connect_fd, pipe_server_op[1]);
+						}
+					}
 				}
 			}
 			else

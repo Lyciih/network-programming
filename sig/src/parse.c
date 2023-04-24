@@ -121,21 +121,36 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		space_split = strtok_r(pipe_split, " \n", &save_s);
 		arg[0] = space_split;
 
-		while(1)
+		if(strcmp(arg[0], "yell") == 0)
+		{
+			arg[1] = save_s;
+			arg[2] = NULL;
+		}
+		else if(strcmp(arg[0], "tell") == 0)
 		{
 			space_split = strtok_r(NULL, " \n", &save_s);
-			if(space_split != NULL)
+			arg[1] = space_split;
+			arg[2] = save_s;
+			arg[3] = NULL;
+		}
+		else
+		{
+			while(1)
 			{
-				arg_count++;
-				arg[arg_count] = space_split;
+				space_split = strtok_r(NULL, " \n", &save_s);
+				if(space_split != NULL)
+				{
+					arg_count++;
+					arg[arg_count] = space_split;
+				}
+				else //在最後填入一個NULL參數
+				{
+					arg_count++;
+					arg[arg_count] = NULL;
+					break;
+				}
+			
 			}
-			else //在最後填入一個NULL參數
-			{
-				arg_count++;
-				arg[arg_count] = NULL;
-				break;
-			}
-		
 		}
 
 
@@ -194,13 +209,25 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		}
 		else if(strcmp(arg[0], "tell") == 0)
 		{
-			server_op.sival_int = 1;
-			sigqueue(getppid(), 34, server_op);
+			if(*arg[2] == '\0')
+			{
+				printf("please input message\n");
+				break;
+			}
+			write(server_op_pipe, arg[2], strlen(arg[2]));
+			server_op.sival_int = atoi(arg[1]);
+			sigqueue(getppid(), 35, server_op);
 			return 0;
 		}
 		else if(strcmp(arg[0], "yell") == 0)
 		{
-			server_op.sival_int = 2;
+			if(*arg[1] == '\0')
+			{
+				printf("please input message\n");
+				break;
+			}
+			write(server_op_pipe, arg[1], strlen(arg[1]));
+			server_op.sival_int = 1;
 			sigqueue(getppid(), 34, server_op);
 			return 0;
 		}
@@ -219,7 +246,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			else
 			{
 				write(server_op_pipe, arg[1], strlen(arg[1]));
-				server_op.sival_int = 3;
+				server_op.sival_int = 2;
 				sigqueue(getppid(), 34, server_op);
 			}
 			return 0;
@@ -235,6 +262,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			}
 			free(count_list);
 			close(connect_fd);
+			close(server_op_pipe);
 		
 			exit(0);
 		}
