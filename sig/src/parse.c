@@ -52,6 +52,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 
 	//用來紀錄是否是每行的首個指令的狀態
 	int first_time = 1;
+	int check;
 
 	char * getenv_state;
 	int setenv_state;
@@ -85,25 +86,26 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			break;
 		}
 
-		//檢查指令是否為數字，前面幾次是多餘的只在最後一個指令才會發生作用
-		int check = 0;
-		while(check < strlen(pipe_split))
-		{
-			if(isdigit(*(pipe_split + check)) == 0)
-			{
-				not_number = 1;
-				break;
-			}
-			else
-			{
-				check++;
-			}
-		}
 
 
 		//如果第一個指令就是數字,視為無效,退出分析函數
 		if(first_time == 1)
 		{
+			//檢查指令是否為數字
+			check = 0;
+			while(check < strlen(pipe_split))
+			{
+				if(isdigit(*(pipe_split + check)) == 0)
+				{
+					not_number = 1;
+					break;
+				}
+				else
+				{
+					check++;
+				}
+			}
+
 			if(not_number == 0)
 			{
 				printf("Unknow command: [%s].\n", pipe_split);
@@ -209,6 +211,11 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				printf("arg[1] is NULL\n");
 				break;
 			}
+			else if(strlen(arg[1]) > 14)	//雖然結構是 15 byte 但要留 1 byte 給結束符
+			{
+				printf("name is too long\n");
+				break;
+			}
 			else
 			{
 				write(server_op_pipe, arg[1], strlen(arg[1]));
@@ -233,6 +240,21 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		}
 		else if(*save_p == '\0')
 		{
+			//檢查指令是否為數字
+			check = 0;
+			while(check < strlen(pipe_split))
+			{
+				if(isdigit(*(pipe_split + check)) == 0)
+				{
+					not_number = 1;
+					break;
+				}
+				else
+				{
+					check++;
+				}
+			}
+
 			//如果最後一個指令是數字,就新增一個節點,把buffer存起來
 			if(not_number == 0)
 			{
