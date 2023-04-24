@@ -49,9 +49,13 @@ int client_add(client_data * new, dllNode_t * client)
 						new->ID = id_current + 1;
 						return 0;
 					}
-					else
+					else if((id_next - id_current) == 1)
 					{
 						current = current->next;
+					}
+					else
+					{
+						printf("ID apply has error or repeat\n");
 					}
 				}
 				id_current = ((client_data *)current)->ID;
@@ -73,6 +77,7 @@ int release_all_client(dllNode_t * client)
 		current = client->next;
 		DLL_delete(client->next);
 		close(((client_data *)current)->socket_fd);
+		close(((client_data *)current)->server_op_pipe);
 		free(current);
 	}
 	free(client);
@@ -89,7 +94,8 @@ int client_leave(dllNode_t * client, int leave_pid)
 		if(((client_data *)current)->pid == leave_pid)
 		{
 			close(((client_data *)current)->socket_fd);
-			printf("%s leaved\n", ((client_data *)current)->ip);
+			close(((client_data *)current)->server_op_pipe);
+			printf("%s : %d leaved\n", ((client_data *)current)->ip, ((client_data *)current)->port);
 			DLL_delete(current);
 			free(current);
 			current = NULL;
@@ -101,7 +107,7 @@ int client_leave(dllNode_t * client, int leave_pid)
 }
 
 
-int get_client_socket_fd(dllNode_t * client, int client_pid)
+client_data * get_client_data(dllNode_t * client, int client_pid)
 {
 	dllNode_t * current = client;
 
@@ -110,7 +116,7 @@ int get_client_socket_fd(dllNode_t * client, int client_pid)
 		current = current->next;
 		if(((client_data *)current)->pid == client_pid)
 		{
-			return ((client_data *)current)->socket_fd;
+			return (client_data *)current;
 		}
 	}
 	return 0;
@@ -125,65 +131,107 @@ void client_leave_handler(int signal, siginfo_t *info, void *ctx)
 	client_leave(client_list, info->si_pid);
 }
 
+void name_handler(siginfo_t *info)
+{
+	client_data * client_information;
+	client_data * other_client_information;
+	int client_fd;
+	char name_buf[15];
+	memset(name_buf, 0, 15);
+	char format_buf[40];
+
+	client_information = get_client_data(client_list, info->si_pid);
+	client_fd = client_information->socket_fd;
+	read(client_information->server_op_pipe, name_buf, sizeof(client_information->name));
+
+	dllNode_t * current = client_list;
+
+	while(current->next != NULL)
+	{
+		current = current->next;
+		other_client_information = (client_data *)current;
+		if(strcmp(name_buf, other_client_information->name) == 0)
+		{
+			sprintf(format_buf, "User %s already exists !\n%% ", name_buf);
+			send(client_fd, format_buf, strlen(format_buf), 0);
+			return;
+		}
+	}
+
+	memset(&(client_information->name), 0, sizeof(client_information->name));
+	strcpy(client_information->name, name_buf);
+	send(client_fd, "name change accept!\n% ", sizeof("name change accept!\n% "), 0);
+}
+
+
+
+void who_handler(siginfo_t *info)
+{
+	int client_fd;
+	client_data * client_information;
+	char who_table[] = "<ID>   <name>             <IP:port>                <indicate me>\n";
+	char format_buf[69];
+
+	client_fd = get_client_data(client_list, info->si_pid)->socket_fd;
+	send(client_fd, who_table, sizeof(who_table), 0);
+	dllNode_t * current = client_list;
+	
+	while(current->next != NULL)
+	{
+		current = current->next;
+		client_information = (client_data *)current;
+		if(client_fd == client_information->socket_fd)
+		{
+			sprintf(format_buf, "%4d   %-15s    %-15s:%5d    <-(me)", 
+					client_information->ID,
+					client_information->name,
+					client_information->ip,
+					client_information->port
+					);
+		}
+		else
+		{
+			sprintf(format_buf, "%4d   %-15s    %-15s:%5d", 
+					client_information->ID,
+					client_information->name,
+					client_information->ip,
+					client_information->port
+					);
+		}
+		send(client_fd, format_buf, strlen(format_buf), 0);
+		send(client_fd, "\n", sizeof("\n"), 0);
+	}
+	send(client_fd, "% ", sizeof("% "), 0);
+}
+
 
 void server_op_handler(int signal, siginfo_t *info, void *ctx)
 {
 	int client_fd;
-	client_data * client_information;
-	char who_table[] = "<ID>   <name>     <IP:port>                <indicate me>\n";
-	char format_buf[100];
 
 	if(info->si_value.sival_int == 0)
 	{
-		client_fd = get_client_socket_fd(client_list, info->si_pid);
-		send(client_fd, who_table, sizeof(who_table), 0);
-		dllNode_t * current = client_list;
-		while(current->next != NULL)
-		{
-			current = current->next;
-			client_information = (client_data *)current;
-			if(client_fd == client_information->socket_fd)
-			{
-				sprintf(format_buf, "%4d   %s    %-15s:%5d    <-(me)", 
-						client_information->ID,
-						client_information->name,
-						client_information->ip,
-						client_information->port
-						);
-			}
-			else
-			{
-				sprintf(format_buf, "%4d   %s    %-15s:%5d", 
-						client_information->ID,
-						client_information->name,
-						client_information->ip,
-						client_information->port
-						);
-			}
-			send(client_fd, format_buf, strlen(format_buf), 0);
-			send(client_fd, "\n", sizeof("\n"), 0);
-		}
-		send(client_fd, "% ", sizeof("% "), 0);
+		who_handler(info);
 	}
 	else if(info->si_value.sival_int == 1)
 	{
-		client_fd = get_client_socket_fd(client_list, info->si_pid);
+		client_fd = get_client_data(client_list, info->si_pid)->socket_fd;
 		send(client_fd, "tell\n", sizeof("tell\n"), 0);
 		send(client_fd, "% ", sizeof("% "), 0);
 	}
 	else if(info->si_value.sival_int == 2)
 	{
-		client_fd = get_client_socket_fd(client_list, info->si_pid);
+		client_fd = get_client_data(client_list, info->si_pid)->socket_fd;
 		send(client_fd, "yell\n", sizeof("yell\n"), 0);
 		send(client_fd, "% ", sizeof("% "), 0);
 	}
 	else if(info->si_value.sival_int == 3)
 	{
-		client_fd = get_client_socket_fd(client_list, info->si_pid);
-		send(client_fd, "name\n", sizeof("name\n"), 0);
-		send(client_fd, "% ", sizeof("% "), 0);
+		name_handler(info);
 	}
 }
+
+
 
 
 void set_signal_child_terminate_action(void)
@@ -213,6 +261,7 @@ int main()
 	int connect_fd = 0;
 	int send_state;
 	int child_pid;
+	int pipe_server_op[2];
 	
 
 	client_list = DLL_init();
@@ -275,14 +324,23 @@ int main()
 	{
 		if((connect_fd = accept(listen_fd, (struct sockaddr *)&client_addr, &len)) < 0)
 		{
-			//perror("accept error\n");
-			//exit(1);
+			if(errno = EINTR)
+			{
+				continue;
+			}
+			else
+			{
+				perror("accept error\n");
+				exit(0);
+			}
 		}
 		else
 		{
+			pipe(pipe_server_op);
+
 			inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
 			client_port = client_addr.sin_port;
-			printf("accept success from %s\n", client_ip);
+			printf("accept success from %s %d\n", client_ip, client_port);
 
 			child_pid = fork();
 
@@ -292,6 +350,7 @@ int main()
 			}
 			else if(child_pid == 0)
 			{
+				close(pipe_server_op[0]);
 				close(listen_fd);
 				release_all_client(client_list);
 				char command_buffer[256];
@@ -317,12 +376,13 @@ int main()
 					read(connect_fd, command_buffer, 256);
 					char * cut = strstr(command_buffer, "\r\n");
 					*cut = '\0';
-					parse(command_buffer, count_list, connect_fd);
+					parse(command_buffer, count_list, connect_fd, pipe_server_op[1]);
 				}
 			}
 			else
 			{
 
+				close(pipe_server_op[1]);
 
 				client_data * new = malloc(sizeof(client_data));
 				if(new == NULL)
@@ -338,6 +398,7 @@ int main()
 					new->port = client_port;
 					new->pid = child_pid;
 					new->socket_fd = connect_fd;
+					new->server_op_pipe = pipe_server_op[0];
 
 					client_add(new, client_list);
 				}

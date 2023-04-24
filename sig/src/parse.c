@@ -36,7 +36,7 @@ number_temp * count_list_check(dllNode_t * count_list)
 
 
 //解析指令
-int parse(char * command, dllNode_t * count_list, int connect_fd)
+int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_pipe)
 {
 	char * pipe_split = NULL;
 	char * space_split = NULL;
@@ -204,8 +204,17 @@ int parse(char * command, dllNode_t * count_list, int connect_fd)
 		}
 		else if(strcmp(arg[0], "name") == 0)
 		{
-			server_op.sival_int = 3;
-			sigqueue(getppid(), 34, server_op);
+			if(arg[1] == NULL)
+			{
+				printf("arg[1] is NULL\n");
+				break;
+			}
+			else
+			{
+				write(server_op_pipe, arg[1], strlen(arg[1]));
+				server_op.sival_int = 3;
+				sigqueue(getppid(), 34, server_op);
+			}
 			return 0;
 		}
 		else if(strcmp(arg[0], "quit") == 0)

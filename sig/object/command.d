@@ -51,7 +51,11 @@ object/command.o: src/command.c /usr/include/stdc-predef.h \
  /usr/include/aarch64-linux-gnu/bits/confname.h \
  /usr/include/aarch64-linux-gnu/bits/getopt_posix.h \
  /usr/include/aarch64-linux-gnu/bits/getopt_core.h \
- /usr/include/aarch64-linux-gnu/bits/unistd_ext.h /usr/include/string.h \
+ /usr/include/aarch64-linux-gnu/bits/unistd_ext.h /usr/include/errno.h \
+ /usr/include/aarch64-linux-gnu/bits/errno.h /usr/include/linux/errno.h \
+ /usr/include/aarch64-linux-gnu/asm/errno.h \
+ /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
+ /usr/include/string.h \
  /usr/include/aarch64-linux-gnu/bits/types/locale_t.h \
  /usr/include/aarch64-linux-gnu/bits/types/__locale_t.h \
  /usr/include/strings.h /usr/include/aarch64-linux-gnu/sys/wait.h \

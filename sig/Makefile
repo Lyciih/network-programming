@@ -23,7 +23,7 @@ server: ./src/server.c
 	gcc $(CFLAG) ./src/server.c -o server lib/libdouble_linked_list.a
 
 
-.PHONY: clean run netstat copy
+.PHONY: clean run netstat copy test
 
 copy:
 	cp /bin/ls ./bin
@@ -38,3 +38,7 @@ run:
 
 netstat:
 	netstat -a|grep 3000
+
+test:
+	clear
+	telnet 59.127.115.95 1223
