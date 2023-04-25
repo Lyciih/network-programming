@@ -38,7 +38,36 @@ typedef struct number_temp{
 	char * temp;
 }number_temp;
 
+//server 管理
+int client_add(client_data * new, dllNode_t * client);
 
+int release_all_client(dllNode_t * client);
+
+int client_leave(dllNode_t * client, int leave_pid);
+
+client_data * get_client_data(dllNode_t *client, int client_pid);
+
+void client_leave_handler(int signal, siginfo_t * info, void * ctx);
+
+void name_handle(siginfo_t * info);
+
+void who_handle(siginfo_t * info);
+
+void yell_handle(siginfo_t * info);
+
+void server_op1_handler(int signal, siginfo_t * info, void * ctx);
+
+void server_op2_handler(int signal, siginfo_t * info, void * ctx);
+
+void set_signal_child_terminate_action(void);
+
+void set_signal_server_op1_action(void);
+
+void set_signal_server_op2_action(void);
+
+int count_list_update(dllNode_t * count_list, int first_time);
+
+//命令處理
 int count_list_update(dllNode_t * count_list, int first_time);
 
 number_temp * count_list_check(dllNode_t * count_list);
