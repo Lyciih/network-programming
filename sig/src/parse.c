@@ -228,6 +228,8 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			free(count_list);
 			close(connect_fd);
 			close(server_op_pipe);
+			server_op.sival_int = 0;
+			sigqueue(getppid(), 36, server_op);
 		
 			exit(0);
 		}

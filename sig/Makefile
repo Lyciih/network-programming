@@ -23,7 +23,7 @@ server: ./src/server.c
 	gcc $(CFLAG) ./src/server.c -o server lib/libdouble_linked_list.a
 
 
-.PHONY: clean run netstat copy test
+.PHONY: clean run netstat copy test opentmux closetmux change_platform
 
 copy:
 	cp /bin/ls ./bin
@@ -42,3 +42,12 @@ netstat:
 test:
 	clear
 	telnet 59.127.115.95 1223
+
+opentmux:
+	bash script/autotmux.sh
+
+closetmux:
+	tmux kill-session -t server_test
+
+change_platform:
+	bash script/change_platform.sh
