@@ -11,7 +11,7 @@ tmux split-window -v -p 50 -t $SESSION:0
 #開啟同步指令並連線測試
 tmux set-option synchronize-panes on
 tmux send-keys -t $SESSION:0 'make test' C-m 
-tmux set-option synchronize-panes off
+#tmux set-option synchronize-panes off
 
 tmux attach -t server_test
 

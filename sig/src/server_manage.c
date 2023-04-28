@@ -297,7 +297,8 @@ void set_signal_child_terminate_action(void)
 	act.sa_sigaction = client_leave_handler;
 	act.sa_flags = SA_SIGINFO;
 
-//   2023.4.25 的實驗結果:當註冊在SIGCHLD時，若有很多人同時離開(比如tmux同步模式)，signal會有漏接的情況，因此改為註冊在可靠信號上
+//   2023.4.25 的實驗結果:當註冊在SIGCHLD時，若有很多人同時離開(比如tmux同步模式)，signal會有漏接的情況，因此也註冊在可靠信號上
+	sigaction(SIGCHLD, &act, NULL);
 	sigaction(36, &act, NULL);
 }
 
