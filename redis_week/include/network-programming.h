@@ -66,6 +66,8 @@ void set_signal_server_op1_action(void);
 
 void set_signal_server_op2_action(void);
 
+void set_signal_server_shutdown_action(void);
+
 int count_list_update(dllNode_t * count_list, int first_time);
 
 //命令處理

@@ -1,6 +1,9 @@
 #include "network-programming.h"
 
 extern dllNode_t * client_list;
+extern redisContext * pContext;
+extern redisReply * reply;
+extern int listen_fd;
 
 
 
@@ -303,6 +306,20 @@ void set_signal_child_terminate_action(void)
 }
 
 
+
+void server_shutdown_handler(int signal, siginfo_t *info, void *ctx)
+{
+
+	release_all_client(client_list);
+	close(listen_fd);
+	freeReplyObject(reply);
+	redisFree(pContext);
+	printf("exit\n");
+	exit(0);
+}
+
+
+
 void set_signal_server_op1_action(void)
 {
 	struct sigaction act;
@@ -322,4 +339,14 @@ void set_signal_server_op2_action(void)
 	act.sa_flags = SA_SIGINFO;
 
 	sigaction(35, &act, NULL);
+}
+
+void set_signal_server_shutdown_action(void)
+{
+	struct sigaction act;
+	memset(&act, 0, sizeof(act));
+	act.sa_sigaction = server_shutdown_handler;
+	act.sa_flags = SA_SIGINFO;
+
+	sigaction(SIGINT, &act, NULL);
 }

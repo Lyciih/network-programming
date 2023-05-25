@@ -1,27 +1,16 @@
 #include "network-programming.h"
 
 dllNode_t * client_list;
-
+redisContext * pContext;
+redisReply * reply;
+int listen_fd;
 
 int main(int argc, char ** argv)
 {
-	redisContext * pContext = redisConnect("127.0.0.1", 6379);
-	if(pContext == NULL)
-	{
-		printf("pContext null!\n");
-		exit(1);
-	}
-	if(pContext->err)
-	{
-		printf("connection error:%s\n", pContext->errstr);
-		exit(1);
-	}
-
-	printf("redis success\n");
-	redisFree(pContext);
 
 
-	int listen_fd = 0;
+
+	listen_fd = 0;
 	int connect_fd = 0;
 	int send_state;
 	int child_pid;
@@ -39,6 +28,7 @@ int main(int argc, char ** argv)
 	set_signal_child_terminate_action();
 	set_signal_server_op1_action();
 	set_signal_server_op2_action();
+	set_signal_server_shutdown_action();
 
 	//申請用來 listen 的socket
 	if((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -128,26 +118,188 @@ int main(int argc, char ** argv)
 				close(pipe_server_op[0]);
 				close(listen_fd);
 				release_all_client(client_list);
+				int count;
 				char command_buffer[256];
 				dllNode_t * count_list = DLL_init();
 
 				setenv("PATH", "bin:.", 1);
 
-				//dup2(connect_fd, STDIN_FILENO);
-				dup2(connect_fd, STDOUT_FILENO);
-
 			
-				if((send_state = send(connect_fd, "hello\n", sizeof("hello\n"), 0)) < 0)
+				dup2(connect_fd, STDOUT_FILENO);
+		
+				pContext = redisConnect("127.0.0.1", 6379);
+				if(pContext == NULL)
 				{
-					perror("\n");
+					printf("pContext null!\n");
+					exit(1);
+				}
+				if(pContext->err)
+				{
+					printf("connection error:%s\n", pContext->errstr);
+					exit(1);
+				}
+
+				printf("redis connect success\n");
+
+				while(1)
+				{
+					//取得帳號
+					if((send_state = send(connect_fd, "user_name:", sizeof("user_name:"), 0)) < 0)
+					{
+						perror("\n");
+					}
+
+					count = read(connect_fd, command_buffer, 256);
+					if(count >= 255)
+					{
+						send(connect_fd, "name too long\n% ", sizeof("name too long\n%% "), 0);
+					}
+
+					char cmd[260];
+					char * cut;
+					cut = strstr(command_buffer, "\r\n");
+					if(cut != NULL)
+					{
+						*cut = '\0';
+					}
+					sprintf(cmd, "get %s", command_buffer);
+					reply = redisCommand(pContext, cmd);
+
+
+
+					//取得密碼
+					if((send_state = send(connect_fd, "password:", sizeof("password:"), 0)) < 0)
+					{
+						perror("\n");
+					}
+
+
+					count = read(connect_fd, command_buffer, 256);
+					if(count >= 255)
+					{
+						send(connect_fd, "password too long\n% ", sizeof("password too long\n%% "), 0);
+					}
+					cut = strstr(command_buffer, "\r\n");
+					if(cut != NULL)
+					{
+						*cut = '\0';
+					}
+					
+					if(reply->str == NULL)
+					{
+						if((send_state = send(connect_fd, "User not found !\n", sizeof("User not found !\n"), 0)) < 0)
+						{
+							perror("\n");
+						}
+						
+						if((send_state = send(connect_fd, "Create account or login again ? <1/2> : ", sizeof("Create account or login again ? <1/2> : "), 0)) < 0)
+						{
+							perror("\n");
+						}
+						
+						count = read(connect_fd, command_buffer, 256);
+						if(count >= 255)
+						{
+							send(connect_fd, "input too long\n% ", sizeof("input too long\n%% "), 0);
+						}
+						cut = strstr(command_buffer, "\r\n");
+						if(cut != NULL)
+						{
+							*cut = '\0';
+						}
+
+						if(strcmp(command_buffer, "1") == 0)
+						{
+							while(1)
+							{
+								char name_temp[20];
+								char password_temp[20];
+
+								if((send_state = send(connect_fd, "your user name: ", sizeof("your user name: "), 0)) < 0)
+								{
+									perror("\n");
+								}
+								
+								count = read(connect_fd, name_temp, 20);
+								if(count >= 19)
+								{
+									send(connect_fd, "input too long\n% ", sizeof("input too long\n%% "), 0);
+								}
+								cut = strstr(name_temp, "\r\n");
+								if(cut != NULL)
+								{
+									*cut = '\0';
+								}
+								
+
+								
+
+								if((send_state = send(connect_fd, "your password: ", sizeof("your password: "), 0)) < 0)
+								{
+									perror("\n");
+								}
+								
+								count = read(connect_fd, password_temp, 20);
+								if(count >= 19)
+								{
+									send(connect_fd, "input too long\n% ", sizeof("input too long\n%% "), 0);
+								}
+								cut = strstr(password_temp, "\r\n");
+								if(cut != NULL)
+								{
+									*cut = '\0';
+								}
+								
+
+								sprintf(cmd, "get %s", name_temp);
+								reply = redisCommand(pContext, cmd);
+								if(reply->type == 4)
+								{
+									sprintf(cmd, "set %s %s", name_temp, password_temp);
+									reply = redisCommand(pContext, cmd);
+									
+									if(reply->type != 6)
+									{
+										if((send_state = send(connect_fd, "Create success !\n", sizeof("Create success !\n"), 0)) < 0)
+										{
+											perror("\n");
+										}
+
+										break;
+									}
+								}
+								else
+								{
+									if((send_state = send(connect_fd, "User name already exist!\n", sizeof("User name already exist!\n"), 0)) < 0)
+									{
+										perror("\n");
+									}
+								}
+							}
+						}
+
+					}
+					else
+					{
+						if(strcmp(command_buffer, reply->str) != 0)
+						{
+							if((send_state = send(connect_fd, "Password error !\n", sizeof("Password error !\n"), 0)) < 0)
+							{
+								perror("\n");
+							}
+						}
+						else
+						{
+							break;
+						}
+					}
 				}
 
 
- 				send(connect_fd, "% ", sizeof("% "), 0);
-				
+				send(connect_fd, "% ", sizeof("% "), 0);
 				while(1)
 				{
-					int count;
+
 
 					count = read(connect_fd, command_buffer, 256);
 					if(count >= 255)
@@ -192,10 +344,5 @@ int main(int argc, char ** argv)
 			}
 		}
 	}
-
-	
-//	release_all_client(client_list);
-	close(listen_fd);
 	return 0;
-
 }
