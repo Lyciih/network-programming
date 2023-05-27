@@ -5,6 +5,7 @@ redisContext * pContext;
 redisReply * reply;
 int listen_fd;
 char prompt[30];
+char change_name_temp[20];
 
 
 int main(int argc, char ** argv)
@@ -109,6 +110,10 @@ int main(int argc, char ** argv)
 			client_port = client_addr.sin_port;
 			printf("accept success from %s %d\n", client_ip, client_port);
 
+
+
+
+
 			child_pid = fork();
 
 			if(child_pid == -1)
@@ -168,7 +173,7 @@ int main(int argc, char ** argv)
 					{
 						*cut = '\0';
 					}
-					sprintf(cmd, "get %s", name_temp);
+					sprintf(cmd, "hget %s password", name_temp);
 					reply = redisCommand(pContext, cmd);
 
 
@@ -258,7 +263,7 @@ int main(int argc, char ** argv)
 								reply = redisCommand(pContext, cmd);
 								if(reply->type == 4)
 								{
-									sprintf(cmd, "set %s %s", name_temp, password_temp);
+									sprintf(cmd, "hmset %s password %s", name_temp, password_temp);
 									reply = redisCommand(pContext, cmd);
 									
 									if(reply->type != 6)
@@ -301,6 +306,12 @@ int main(int argc, char ** argv)
 				memset(prompt, 0, sizeof(prompt));
 				sprintf(prompt, "(%s)%% ", name_temp);
 				send(connect_fd, prompt, sizeof(prompt), 0);
+
+				sigval_t server_op;
+				write(pipe_server_op[1], name_temp, strlen(name_temp));
+				server_op.sival_int = 3;
+				sigqueue(getppid(), 34, server_op);
+
 				while(1)
 				{
 
@@ -325,7 +336,7 @@ int main(int argc, char ** argv)
 			{
 
 				close(pipe_server_op[1]);
-
+			
 				client_data * new = malloc(sizeof(client_data));
 				if(new == NULL)
 				{
@@ -344,6 +355,8 @@ int main(int argc, char ** argv)
 
 					client_add(new, client_list);
 				}
+
+
 
 			}
 		}

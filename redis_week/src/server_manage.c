@@ -4,6 +4,8 @@ extern dllNode_t * client_list;
 extern redisContext * pContext;
 extern redisReply * reply;
 extern int listen_fd;
+extern char prompt[30];
+extern char change_name_temp[20];
 
 
 
@@ -38,7 +40,7 @@ int client_add(client_data * new, dllNode_t * client)
 				id_current = ((client_data *)current)->ID;
 				DLL_addto_next(&new->node, current);
 				new->ID = 1;
-				return 0;
+				return 1;
 			}
 			else
 			{
@@ -50,7 +52,7 @@ int client_add(client_data * new, dllNode_t * client)
 					{
 						DLL_addto_next(&new->node, current);
 						new->ID = id_current + 1;
-						return 0;
+						return id_current + 1;
 					}
 					else if((id_next - id_current) == 1)
 					{
@@ -64,7 +66,7 @@ int client_add(client_data * new, dllNode_t * client)
 				id_current = ((client_data *)current)->ID;
 				DLL_addto_next(&new->node, current);
 				new->ID = id_current + 1;
-				return 0;
+				return id_current + 1;
 			}
 		}
 	}
@@ -142,8 +144,11 @@ void name_handler(siginfo_t *info)
 	char name_buf[15];
 	memset(name_buf, 0, 15);
 	char format_buf[40];
+	char prompt[40];
+	char old_name[15];
 
 	client_information = get_client_data(client_list, info->si_pid);
+	strcpy(old_name, client_information->name);	
 	client_fd = client_information->socket_fd;
 	read(client_information->server_op_pipe, name_buf, sizeof(client_information->name));
 
@@ -155,15 +160,43 @@ void name_handler(siginfo_t *info)
 		other_client_information = (client_data *)current;
 		if(strcmp(name_buf, other_client_information->name) == 0)
 		{
-			sprintf(format_buf, "User %s already exists !\n%% ", name_buf);
+			sprintf(format_buf, "User %s already exists !\n", name_buf);
 			send(client_fd, format_buf, strlen(format_buf), 0);
+			send(client_fd, prompt, strlen(prompt), 0);
 			return;
 		}
 	}
 
 	memset(&(client_information->name), 0, sizeof(client_information->name));
 	strcpy(client_information->name, name_buf);
-	send(client_fd, "name change accept!\n% ", sizeof("name change accept!\n% "), 0);
+	send(client_fd, "name change accept!\n", sizeof("name change accept!\n"), 0);
+	
+	client_information = get_client_data(client_list, info->si_pid);
+	sprintf(prompt, "(%s)%% ", client_information->name);	
+	send(client_fd, prompt, strlen(prompt), 0);
+
+	sigval_t server_op;
+	server_op.sival_int = 4;
+	sigqueue(info->si_pid, 34, server_op);
+
+	pContext = redisConnect("127.0.0.1", 6379);
+	if(pContext == NULL)
+	{
+		printf("connection null:\n");
+		exit(1);
+	}
+	if(pContext->err)
+	{
+		printf("connection error:%s\n", pContext->errstr);
+		exit(1);
+	}
+	
+	char cmd[100];
+	sprintf(cmd, "rename %s %s", old_name, client_information->name);
+	reply = redisCommand(pContext, cmd);
+
+	freeReplyObject(reply);
+	redisFree(pContext);
 }
 
 
@@ -174,8 +207,10 @@ void who_handler(siginfo_t *info)
 	client_data * client_information = NULL;
 	char who_table[] = "<ID>   <name>             <IP:port>                <indicate me>\n";
 	char format_buf[69];
+	char prompt[40];
 
 	client_fd = get_client_data(client_list, info->si_pid)->socket_fd;
+	sprintf(prompt, "(%s)%% ", get_client_data(client_list, info->si_pid)->name);	
 	send(client_fd, who_table, sizeof(who_table), 0);
 	dllNode_t * current = client_list;
 	
@@ -203,7 +238,9 @@ void who_handler(siginfo_t *info)
 		}
 		send(client_fd, format_buf, strlen(format_buf), 0);
 	}
-	send(client_fd, "% ", sizeof("% "), 0);
+
+
+	send(client_fd, prompt, strlen(prompt), 0);
 }
 
 
@@ -213,14 +250,15 @@ void yell_handler(siginfo_t *info)
 	client_data * other_client_information = NULL;
 	char message_buf[251];
 	memset(message_buf, 0, 251);
-	char format_buf[282];
+	char format_buf[284];
+	char prompt[40];
 
 	client_information = get_client_data(client_list, info->si_pid);
 	read(client_information->server_op_pipe, message_buf, 251);
 
 
-	sprintf(format_buf, "<user(%d) yelled>: %s\n%% ",
-			client_information->ID, 
+	sprintf(format_buf, "<%s yelled>: %s\n",
+			client_information->name, 
 			message_buf
 			);
 
@@ -231,8 +269,29 @@ void yell_handler(siginfo_t *info)
 		current = current->next;
 		other_client_information = (client_data *)current;
 		send(other_client_information->socket_fd, format_buf, strlen(format_buf), 0);
+		sprintf(prompt, "(%s)%% ", other_client_information->name);
+		send(other_client_information->socket_fd, prompt, strlen(prompt), 0);
 	}
 	return;
+}
+
+
+void login_handler(siginfo_t *info)
+{
+	client_data * client_information = NULL;
+	char name_buf[15];
+	memset(name_buf, 0, 15);
+
+	client_information = get_client_data(client_list, info->si_pid);
+	read(client_information->server_op_pipe, name_buf, sizeof(client_information->name));
+	memset(&(client_information->name), 0, sizeof(client_information->name));
+	strcpy(client_information->name, name_buf);
+}
+
+
+void child_name_handler(siginfo_t *info)
+{
+	sprintf(prompt, "(%s)%% ", change_name_temp);
 }
 
 
@@ -251,6 +310,16 @@ void server_op1_handler(int signal, siginfo_t *info, void *ctx)
 	{
 		name_handler(info);
 	}
+	else if(info->si_value.sival_int == 3)
+	{
+		login_handler(info);
+	}
+
+	else if(info->si_value.sival_int == 4)
+	{
+		child_name_handler(info);
+	}
+
 }
 
 
@@ -262,18 +331,21 @@ void server_op2_handler(int signal, siginfo_t *info, void *ctx)
 	int client_fd;
 	char message_buf[251];
 	memset(message_buf, 0, 251);
-	char format_buf[282];
+	char format_buf[284];
+	char prompt[40];
+	char self_prompt[40];
 
 
 	client_information = get_client_data(client_list, info->si_pid);
 	client_fd = client_information->socket_fd;
 	read(client_information->server_op_pipe, message_buf, 251);
 
-	sprintf(format_buf, "<user(%d) told you>: %s\n%% ",
-			client_information->ID, 
+	sprintf(format_buf, "<%s told you>: %s\n",
+			client_information->name, 
 			message_buf
 			);
 
+	sprintf(self_prompt, "(%s)%% ", client_information->name);
 
 	dllNode_t * current = client_list;
 	
@@ -283,12 +355,17 @@ void server_op2_handler(int signal, siginfo_t *info, void *ctx)
 		client_information = (client_data *)current;
 		if(target_ID == client_information->ID)
 		{
+			sprintf(prompt, "(%s)%% ", client_information->name);
 			send(client_information->socket_fd, format_buf, strlen(format_buf), 0);
-			send(client_fd, "send accept!\n% ", sizeof("send accept!\n% "), 0);
+			send(client_information->socket_fd, prompt, strlen(prompt), 0);
+			
+			send(client_fd, "send accept!\n", sizeof("send accept!\n"), 0);
+			send(client_fd, self_prompt, strlen(prompt), 0);
 			return;
 		}
 	}	
-	send(client_fd, "no this ID\n% ", sizeof("no this ID\n% "), 0);
+	send(client_fd, "no this ID\n", sizeof("no this ID\n"), 0);
+	send(client_fd, self_prompt, strlen(self_prompt), 0);
 	return;
 }
 

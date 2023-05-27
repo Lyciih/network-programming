@@ -1,5 +1,6 @@
 #include "network-programming.h"
 extern char prompt[30];
+extern char change_name_temp[20];
 
 //解析指令
 int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_pipe)
@@ -211,6 +212,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			}
 			else
 			{
+				strcpy(change_name_temp, arg[1]);
 				write(server_op_pipe, arg[1], strlen(arg[1]));
 				server_op.sival_int = 2;
 				sigqueue(getppid(), 34, server_op);
