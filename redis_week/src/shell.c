@@ -4,6 +4,8 @@ dllNode_t * client_list;
 redisContext * pContext;
 redisReply * reply;
 int listen_fd;
+char prompt[30];
+
 
 int main(int argc, char ** argv)
 {
@@ -141,6 +143,10 @@ int main(int argc, char ** argv)
 
 				printf("redis connect success\n");
 
+
+				char name_temp[20];
+				char password_temp[20];
+
 				while(1)
 				{
 					//取得帳號
@@ -149,20 +155,20 @@ int main(int argc, char ** argv)
 						perror("\n");
 					}
 
-					count = read(connect_fd, command_buffer, 256);
-					if(count >= 255)
+					count = read(connect_fd, name_temp, 20);
+					if(count >= 19)
 					{
 						send(connect_fd, "name too long\n% ", sizeof("name too long\n%% "), 0);
 					}
 
 					char cmd[260];
 					char * cut;
-					cut = strstr(command_buffer, "\r\n");
+					cut = strstr(name_temp, "\r\n");
 					if(cut != NULL)
 					{
 						*cut = '\0';
 					}
-					sprintf(cmd, "get %s", command_buffer);
+					sprintf(cmd, "get %s", name_temp);
 					reply = redisCommand(pContext, cmd);
 
 
@@ -174,18 +180,18 @@ int main(int argc, char ** argv)
 					}
 
 
-					count = read(connect_fd, command_buffer, 256);
-					if(count >= 255)
+					count = read(connect_fd, password_temp, 20);
+					if(count >= 19)
 					{
 						send(connect_fd, "password too long\n% ", sizeof("password too long\n%% "), 0);
 					}
-					cut = strstr(command_buffer, "\r\n");
+					cut = strstr(password_temp, "\r\n");
 					if(cut != NULL)
 					{
 						*cut = '\0';
 					}
 					
-					if(reply->str == NULL)
+					if(reply->type == 4)
 					{
 						if((send_state = send(connect_fd, "User not found !\n", sizeof("User not found !\n"), 0)) < 0)
 						{
@@ -212,9 +218,6 @@ int main(int argc, char ** argv)
 						{
 							while(1)
 							{
-								char name_temp[20];
-								char password_temp[20];
-
 								if((send_state = send(connect_fd, "your user name: ", sizeof("your user name: "), 0)) < 0)
 								{
 									perror("\n");
@@ -281,7 +284,7 @@ int main(int argc, char ** argv)
 					}
 					else
 					{
-						if(strcmp(command_buffer, reply->str) != 0)
+						if(strcmp(password_temp, reply->str) != 0)
 						{
 							if((send_state = send(connect_fd, "Password error !\n", sizeof("Password error !\n"), 0)) < 0)
 							{
@@ -295,8 +298,9 @@ int main(int argc, char ** argv)
 					}
 				}
 
-
-				send(connect_fd, "% ", sizeof("% "), 0);
+				memset(prompt, 0, sizeof(prompt));
+				sprintf(prompt, "(%s)%% ", name_temp);
+				send(connect_fd, prompt, sizeof(prompt), 0);
 				while(1)
 				{
 

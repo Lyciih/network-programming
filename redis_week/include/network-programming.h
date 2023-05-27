@@ -23,7 +23,7 @@
 typedef struct client_data{
 	dllNode_t node;
 	int ID;
-	char name[15];
+	char name[20];
 	char ip[20];
 	unsigned short port;
 	int pid;

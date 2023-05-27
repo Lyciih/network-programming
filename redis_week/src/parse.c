@@ -1,4 +1,5 @@
 #include "network-programming.h"
+extern char prompt[30];
 
 //解析指令
 int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_pipe)
@@ -297,6 +298,6 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			first_time = 0;
 		}
 	}
-	send(connect_fd, "% ", sizeof("% "), 0);
+	send(connect_fd, prompt, sizeof(prompt), 0);
 	return 0;
 }
