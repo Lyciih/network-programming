@@ -46,6 +46,11 @@ object/parse_manage.o: src/parse_manage.c /usr/include/stdc-predef.h \
  /usr/include/aarch64-linux-gnu/bits/struct_mutex.h \
  /usr/include/aarch64-linux-gnu/bits/struct_rwlock.h \
  /usr/include/alloca.h /usr/include/aarch64-linux-gnu/bits/stdlib-float.h \
+ /usr/include/time.h /usr/include/aarch64-linux-gnu/bits/time.h \
+ /usr/include/aarch64-linux-gnu/bits/types/struct_tm.h \
+ /usr/include/aarch64-linux-gnu/bits/types/struct_itimerspec.h \
+ /usr/include/aarch64-linux-gnu/bits/types/locale_t.h \
+ /usr/include/aarch64-linux-gnu/bits/types/__locale_t.h \
  /usr/include/unistd.h /usr/include/aarch64-linux-gnu/bits/posix_opt.h \
  /usr/include/aarch64-linux-gnu/bits/environments.h \
  /usr/include/aarch64-linux-gnu/bits/confname.h \
@@ -55,11 +60,9 @@ object/parse_manage.o: src/parse_manage.c /usr/include/stdc-predef.h \
  /usr/include/aarch64-linux-gnu/bits/errno.h /usr/include/linux/errno.h \
  /usr/include/aarch64-linux-gnu/asm/errno.h \
  /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
- /usr/include/string.h \
- /usr/include/aarch64-linux-gnu/bits/types/locale_t.h \
- /usr/include/aarch64-linux-gnu/bits/types/__locale_t.h \
- /usr/include/strings.h /usr/include/aarch64-linux-gnu/sys/wait.h \
- /usr/include/signal.h /usr/include/aarch64-linux-gnu/bits/signum.h \
+ /usr/include/string.h /usr/include/strings.h \
+ /usr/include/aarch64-linux-gnu/sys/wait.h /usr/include/signal.h \
+ /usr/include/aarch64-linux-gnu/bits/signum.h \
  /usr/include/aarch64-linux-gnu/bits/signum-generic.h \
  /usr/include/aarch64-linux-gnu/bits/types/sig_atomic_t.h \
  /usr/include/aarch64-linux-gnu/bits/types/siginfo_t.h \

@@ -3,8 +3,10 @@
 dllNode_t * client_list;
 redisContext * pContext;
 redisReply * reply;
+redisReply * reply_2;
 int listen_fd;
 char prompt[30];
+char name_temp[20];
 char change_name_temp[20];
 
 
@@ -149,7 +151,7 @@ int main(int argc, char ** argv)
 				printf("redis connect success\n");
 
 
-				char name_temp[20];
+
 				char password_temp[20];
 
 				while(1)
@@ -166,15 +168,14 @@ int main(int argc, char ** argv)
 						send(connect_fd, "name too long\n% ", sizeof("name too long\n%% "), 0);
 					}
 
-					char cmd[260];
+
 					char * cut;
 					cut = strstr(name_temp, "\r\n");
 					if(cut != NULL)
 					{
 						*cut = '\0';
 					}
-					sprintf(cmd, "hget %s password", name_temp);
-					reply = redisCommand(pContext, cmd);
+					reply = redisCommand(pContext, "hget client:%s password", name_temp);
 
 
 
@@ -223,48 +224,66 @@ int main(int argc, char ** argv)
 						{
 							while(1)
 							{
-								if((send_state = send(connect_fd, "your user name: ", sizeof("your user name: "), 0)) < 0)
+								int get_name = 1;
+								while(get_name)
 								{
-									perror("\n");
-								}
-								
-								count = read(connect_fd, name_temp, 20);
-								if(count >= 19)
-								{
-									send(connect_fd, "input too long\n% ", sizeof("input too long\n%% "), 0);
-								}
-								cut = strstr(name_temp, "\r\n");
-								if(cut != NULL)
-								{
-									*cut = '\0';
-								}
-								
-
-								
-
-								if((send_state = send(connect_fd, "your password: ", sizeof("your password: "), 0)) < 0)
-								{
-									perror("\n");
-								}
-								
-								count = read(connect_fd, password_temp, 20);
-								if(count >= 19)
-								{
-									send(connect_fd, "input too long\n% ", sizeof("input too long\n%% "), 0);
-								}
-								cut = strstr(password_temp, "\r\n");
-								if(cut != NULL)
-								{
-									*cut = '\0';
+									if((send_state = send(connect_fd, "your user name: ", sizeof("your user name: "), 0)) < 0)
+									{
+										perror("\n");
+									}
+									else
+									{
+										count = read(connect_fd, name_temp, 20);
+									
+										if(count >= 19)
+										{
+											send(connect_fd, "input too long\n% ", sizeof("input too long\n%% "), 0);
+										}
+										else
+										{
+											cut = strstr(name_temp, "\r\n");
+											if(cut != NULL)
+											{
+												*cut = '\0';
+											}
+											get_name = 0;
+										}
+									}
 								}
 								
 
-								sprintf(cmd, "get %s", name_temp);
-								reply = redisCommand(pContext, cmd);
-								if(reply->type == 4)
+								int get_password = 1;
+								while(get_password)
 								{
-									sprintf(cmd, "hmset %s password %s", name_temp, password_temp);
-									reply = redisCommand(pContext, cmd);
+									if((send_state = send(connect_fd, "your password: ", sizeof("your password: "), 0)) < 0)
+									{
+										perror("\n");
+									}
+									else
+									{
+									
+										count = read(connect_fd, password_temp, 20);
+										if(count >= 19)
+										{
+											send(connect_fd, "input too long\n% ", sizeof("input too long\n%% "), 0);
+										}
+										else
+										{
+											cut = strstr(password_temp, "\r\n");
+											if(cut != NULL)
+											{
+												*cut = '\0';
+											}
+											get_password = 0;
+										}
+									}
+								}
+								
+
+								reply = redisCommand(pContext, "keys client:%s", name_temp);
+								if(reply->elements == 0)
+								{
+									reply = redisCommand(pContext, "hmset client:%s password %s", name_temp, password_temp);
 									
 									if(reply->type != 6)
 									{

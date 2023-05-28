@@ -1,6 +1,14 @@
 #include "network-programming.h"
 extern char prompt[30];
 extern char change_name_temp[20];
+extern redisContext * pContext;
+extern redisReply * reply;
+extern redisReply * reply_2;
+extern char name_temp[20];
+
+time_t now;
+int year, month, day, second, minute, hour;
+char redirect_buffer[5000];
 
 //解析指令
 int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_pipe)
@@ -12,10 +20,14 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 
 	char buffer[5000];
 	memset(buffer, 0, sizeof(buffer));
+	char redirect_buffer[5000];
+	memset(buffer, 0, sizeof(redirect_buffer));
 
 	//分解參數
 	char * arg[10] = {NULL};
 	int arg_count = 0;
+	char * redirect_arg[10] = {NULL};
+	int redirect_arg_count = 0;
 
 	//用來紀錄是否是每行的首個指令的狀態
 	int first_time = 1;
@@ -26,10 +38,14 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 	
 	sigval_t server_op;
 
+	int mailto_type = 0;
+
 	while(1)
 	{
+		mailto_type = 0;
 		//參數計數器
 		arg_count = 0;
+		redirect_arg_count = 0;
 
 		//紀錄判斷指令是否為數字的結果
 		int not_number = 0;
@@ -99,6 +115,47 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			arg[1] = space_split;
 			arg[2] = save_s;
 			arg[3] = NULL;
+		}
+		else if(strcmp(arg[0], "mailto") == 0)
+		{
+			space_split = strtok_r(NULL, " \n", &save_s);
+			arg[1] = space_split;
+			arg[2] = save_s;
+			if(*arg[2] == '<')
+			{
+				arg[3] = NULL;
+				mailto_type = 1;
+				space_split = strtok_r(NULL, "<", &save_s);
+				space_split = strtok_r(space_split, " \n", &save_s);
+				redirect_arg[0] = space_split;
+				
+				while(1)
+				{
+					space_split = strtok_r(NULL, " \n", &save_s);
+					if(space_split != NULL)
+					{
+						redirect_arg_count++;
+						redirect_arg[redirect_arg_count] = space_split;
+						break;
+					}
+					else //在最後填入一個NULL參數
+					{
+						redirect_arg_count++;
+						redirect_arg[redirect_arg_count] = NULL;
+						break;
+					}
+				
+				}
+				
+				if(strcmp(redirect_arg[0], "ls") == 0)
+				{
+					command_need_fork(redirect_arg[0], sizeof(redirect_arg[0]), redirect_arg, redirect_buffer, "<", count_list);
+				}
+			}
+			else
+			{
+				arg[3] = NULL;
+			}
 		}
 		else
 		{
@@ -170,12 +227,14 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		}
 		else if(strcmp(arg[0], "who") == 0)
 		{
+			count_list_update(count_list, first_time);
 			server_op.sival_int = 0;
 			sigqueue(getppid(), 34, server_op);
 			return 0;
 		}
 		else if(strcmp(arg[0], "tell") == 0)
 		{
+			count_list_update(count_list, first_time);
 			if(*arg[2] == '\0')
 			{
 				printf("please input message\n");
@@ -188,6 +247,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		}
 		else if(strcmp(arg[0], "yell") == 0)
 		{
+			count_list_update(count_list, first_time);
 			if(*arg[1] == '\0')
 			{
 				printf("please input message\n");
@@ -200,6 +260,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		}
 		else if(strcmp(arg[0], "name") == 0)
 		{
+			count_list_update(count_list, first_time);
 			if(arg[1] == NULL)
 			{
 				printf("arg[1] is NULL\n");
@@ -218,6 +279,86 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				sigqueue(getppid(), 34, server_op);
 			}
 			return 0;
+		}
+		else if(strcmp(arg[0], "listmail") == 0)
+		{
+			count_list_update(count_list, first_time);
+			reply = redisCommand(pContext, "keys mail:%s:*", name_temp);
+			
+			if(reply->elements == 0)
+			{
+				send(connect_fd, "Empty !\n", sizeof("Empty !"), 0);
+			}
+			else
+			{
+				printf("<id> <date>			<sender>	<message>\n");
+	
+				reply = redisCommand(pContext, "get mailbox:%s", name_temp);
+				
+				for(int i = atoi(reply->str); i > 0; i--)
+				{	
+					reply_2 = redisCommand(pContext, "hvals mail:%s:%d", name_temp, i);
+					
+					if(reply_2->elements != 0)
+					{
+						printf("%2s   %s %s	%s		%s\n", reply_2->element[0]->str, reply_2->element[1]->str, reply_2->element[2]->str, reply_2->element[3]->str, reply_2->element[4]->str);
+					}
+				}
+			}
+		}
+		else if(strcmp(arg[0], "mailto") == 0)
+		{
+			count_list_update(count_list, first_time);
+			reply = redisCommand(pContext, "keys client:%s", arg[1]);
+			
+			if(reply->elements == 0)
+			{
+				send(connect_fd, "User not found\n", sizeof("User not found\n"), 0);
+			}
+			else
+			{
+				reply = redisCommand(pContext, "incr mailbox:%s", arg[1]);
+				
+				reply = redisCommand(pContext, "get mailbox:%s", arg[1]);
+
+				time(&now);
+				struct tm * local = localtime(&now);
+				hour = local->tm_hour;
+				minute = local->tm_min;
+				second = local->tm_sec;
+				day = local->tm_mday;
+				month = local->tm_mon + 1;
+				year = local->tm_year + 1900;
+
+				char time[20];
+				char date[20];
+				sprintf(time, "%02d:%02d:%02d", hour, minute, second);
+				sprintf(date, "%04d-%02d-%02d", year, month, day);
+				
+				if(mailto_type == 0)
+				{
+					reply = redisCommand(pContext, "hmset mail:%s:%s id %s date %s time %s sender %s message %s", arg[1], reply->str, reply->str, date, time, name_temp, arg[2]);
+				}
+				else
+				{
+					reply = redisCommand(pContext, "hmset mail:%s:%s id %s date %s time %s sender %s message %s", arg[1], reply->str, reply->str, date, time, name_temp, redirect_buffer);
+				}
+			}
+		}
+		else if(strcmp(arg[0], "delmail") == 0)
+		{
+			count_list_update(count_list, first_time);
+			reply = redisCommand(pContext, "keys mail:%s:%s",name_temp, arg[1]);
+			
+			if(reply->elements == 0)
+			{
+				send(connect_fd, "Mail id unexist!\n", sizeof("Mail id unexist\n"), 0);
+			}
+			else
+			{
+				reply = redisCommand(pContext, "del mail:%s:%s", name_temp, arg[1]);
+				printf("Delete accept !\n");
+			}
 		}
 		else if(strcmp(arg[0], "quit") == 0)
 		{

@@ -6,6 +6,7 @@ extern redisReply * reply;
 extern int listen_fd;
 extern char prompt[30];
 extern char change_name_temp[20];
+extern char name_temp[20];
 
 
 
@@ -141,11 +142,11 @@ void name_handler(siginfo_t *info)
 	client_data * client_information = NULL;
 	client_data * other_client_information = NULL;
 	int client_fd;
-	char name_buf[15];
-	memset(name_buf, 0, 15);
-	char format_buf[40];
+	char name_buf[20];
+	memset(name_buf, 0, 20);
+	char format_buf[43];
 	char prompt[40];
-	char old_name[15];
+	char old_name[20];
 
 	client_information = get_client_data(client_list, info->si_pid);
 	strcpy(old_name, client_information->name);	
@@ -191,9 +192,14 @@ void name_handler(siginfo_t *info)
 		exit(1);
 	}
 	
-	char cmd[100];
-	sprintf(cmd, "rename %s %s", old_name, client_information->name);
-	reply = redisCommand(pContext, cmd);
+	reply = redisCommand(pContext, "rename client:%s client:%s", old_name, client_information->name);
+	reply = redisCommand(pContext, "rename mailbox:%s mailbox:%s", old_name, client_information->name);
+	reply = redisCommand(pContext, "get mailbox:%s", client_information->name);
+	int mail_count = atoi(reply->str);
+	for(int i = 1; i <= mail_count; i++)
+	{
+		reply = redisCommand(pContext, "rename mail:%s:%d mail:%s:%d", old_name, i, client_information->name, i);
+	}
 
 	freeReplyObject(reply);
 	redisFree(pContext);
@@ -291,6 +297,7 @@ void login_handler(siginfo_t *info)
 
 void child_name_handler(siginfo_t *info)
 {
+	strcpy(name_temp, change_name_temp);
 	sprintf(prompt, "(%s)%% ", change_name_temp);
 }
 
