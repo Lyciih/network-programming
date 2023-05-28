@@ -343,6 +343,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				{
 					reply = redisCommand(pContext, "hmset mail:%s:%s id %s date %s time %s sender %s message %s", arg[1], reply->str, reply->str, date, time, name_temp, redirect_buffer);
 				}
+				send(connect_fd, "Send accept !\n", sizeof("Send accept !\n"), 0);
 			}
 		}
 		else if(strcmp(arg[0], "delmail") == 0)
