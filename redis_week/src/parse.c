@@ -656,6 +656,12 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				break;
 			}
 
+			reply = redisCommand(pContext, "hget group:%s owner", arg[1]);
+			if(strcmp(reply->str, name_temp) != 0)
+			{
+				printf("You don't have permission !\n");
+				break;
+			}
 
 			if(*arg[2] == '\0')
 			{
@@ -663,6 +669,12 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				break;
 			}
 
+			reply = redisCommand(pContext, "set %s:gyell:target %s", name_temp, arg[1]);
+			
+			write(server_op_pipe, arg[2], strlen(arg[2]));
+			server_op.sival_int = 5;
+			sigqueue(getppid(), 34, server_op);
+			return 0;
 		}
 		else if(strcmp(arg[0], "quit") == 0)
 		{

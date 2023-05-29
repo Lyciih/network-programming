@@ -179,18 +179,6 @@ void name_handler(siginfo_t *info)
 	sigval_t server_op;
 	server_op.sival_int = 4;
 	sigqueue(info->si_pid, 34, server_op);
-
-	pContext = redisConnect("127.0.0.1", 6379);
-	if(pContext == NULL)
-	{
-		printf("connection null:\n");
-		exit(1);
-	}
-	if(pContext->err)
-	{
-		printf("connection error:%s\n", pContext->errstr);
-		exit(1);
-	}
 	
 	reply = redisCommand(pContext, "rename client:%s client:%s", old_name, client_information->name);
 	reply = redisCommand(pContext, "rename mailbox:%s mailbox:%s", old_name, client_information->name);
@@ -200,9 +188,6 @@ void name_handler(siginfo_t *info)
 	{
 		reply = redisCommand(pContext, "rename mail:%s:%d mail:%s:%d", old_name, i, client_information->name, i);
 	}
-
-	freeReplyObject(reply);
-	redisFree(pContext);
 }
 
 
@@ -302,6 +287,50 @@ void child_name_handler(siginfo_t *info)
 }
 
 
+void gyell_handler(siginfo_t *info)
+{
+	char message_buf[251];
+	memset(message_buf, 0, 251);
+	char format_buf[284];
+	char other_format_buf[284];
+	char prompt[40];
+
+	client_data * client_information = NULL;
+	client_information = get_client_data(client_list, info->si_pid);
+	read(client_information->server_op_pipe, message_buf, 251);
+	
+	reply = redisCommand(pContext, "get %s:gyell:target", client_information->name);
+
+	sprintf(format_buf, "<%s-%s>: %s\n",
+			reply->str,
+			client_information->name, 
+			message_buf
+			);
+	
+	sprintf(other_format_buf, "\n<%s-%s>: %s\n",
+			reply->str,
+			client_information->name, 
+			message_buf
+			);
+
+	reply = redisCommand(pContext, "hkeys group:%s", reply->str);
+	for(int i = 1; i < reply->elements; i++)
+	{
+		dllNode_t * current = client_list;
+		
+		while(current->next != NULL)
+		{
+			current = current->next;
+			client_information = (client_data *)current;
+			if(strcmp(reply->element[i]->str, client_information->name) == 0)
+			{
+				sprintf(prompt, "(%s)%% ", client_information->name);
+				send(client_information->socket_fd, format_buf, strlen(format_buf), 0);
+				send(client_information->socket_fd, prompt, strlen(prompt), 0);
+			}
+		}
+	}
+}
 
 void server_op1_handler(int signal, siginfo_t *info, void *ctx)
 {
@@ -321,10 +350,13 @@ void server_op1_handler(int signal, siginfo_t *info, void *ctx)
 	{
 		login_handler(info);
 	}
-
 	else if(info->si_value.sival_int == 4)
 	{
 		child_name_handler(info);
+	}
+	else if(info->si_value.sival_int == 5)
+	{
+		gyell_handler(info);
 	}
 
 }

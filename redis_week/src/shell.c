@@ -353,6 +353,17 @@ int main(int argc, char ** argv)
 			}
 			else
 			{
+				pContext = redisConnect("127.0.0.1", 6379);
+				if(pContext == NULL)
+				{
+					printf("pContext null!\n");
+					exit(1);
+				}
+				if(pContext->err)
+				{
+					printf("connection error:%s\n", pContext->errstr);
+					exit(1);
+				}
 
 				close(pipe_server_op[1]);
 			
