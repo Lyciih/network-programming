@@ -364,11 +364,11 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		else if(strcmp(arg[0], "creategroup") == 0)
 		{
 			count_list_update(count_list, first_time);
-			reply = redisCommand(pContext, "keys group:%s:*", arg[1]);
+			reply = redisCommand(pContext, "keys group:%s", arg[1]);
 			
 			if(reply->elements == 0)
 			{
-				reply = redisCommand(pContext, "hmset group:%s:%s owner %s %s 0", arg[1], name_temp, name_temp, name_temp);
+				reply = redisCommand(pContext, "hmset group:%s owner %s %s 0", arg[1], name_temp, name_temp);
 				reply = redisCommand(pContext, "hmset %s:group %s %s", name_temp, arg[1], name_temp);
 				printf("Create success !\n");
 
@@ -401,7 +401,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		else if(strcmp(arg[0], "addto") == 0)
 		{
 			count_list_update(count_list, first_time);
-			reply = redisCommand(pContext, "keys group:%s:*", arg[1]);
+			reply = redisCommand(pContext, "keys group:%s", arg[1]);
 			
 			if(reply->elements == 0)
 			{
@@ -409,8 +409,8 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			}
 			else
 			{
-				reply = redisCommand(pContext, "keys group:%s:%s", arg[1], name_temp);
-				if(reply->elements == 0)
+				reply = redisCommand(pContext, "hget group:%s owner", arg[1]);
+				if(strcmp(reply->str, name_temp) != 0)
 				{
 					printf("You don't have permission !\n");
 				}
@@ -429,14 +429,14 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 						else
 						{
 							
-							reply = redisCommand(pContext, "hexists group:%s:%s %s", arg[1], name_temp, arg[count]);
+							reply = redisCommand(pContext, "hexists group:%s %s", arg[1], arg[count]);
 							if(reply->integer == 1)
 							{
 								printf("%s already in group !\n", arg[count]);
 							}	
 							else
 							{
-								reply = redisCommand(pContext, "hmset group:%s:%s %s 0", arg[1], name_temp, arg[count]);
+								reply = redisCommand(pContext, "hmset group:%s %s 0", arg[1], arg[count]);
 								reply = redisCommand(pContext, "hmset %s:group %s %s", arg[count], arg[1], name_temp);
 								printf("%s add success !\n", arg[count]);
 							}
@@ -448,7 +448,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		}
 		else if(strcmp(arg[0], "leavegroup") == 0)
 		{
-			reply = redisCommand(pContext, "keys group:%s:*", arg[1]);
+			reply = redisCommand(pContext, "keys group:%s", arg[1]);
 			
 			if(reply->elements == 0)
 			{
@@ -459,8 +459,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				reply = redisCommand(pContext, "hexists %s:group %s", name_temp, arg[1]);
 				if(reply->integer == 1)
 				{
-					reply = redisCommand(pContext, "hget %s:group %s", name_temp, arg[1]);
-					reply = redisCommand(pContext, "hdel group:%s:%s %s", arg[1], reply->str, name_temp);
+					reply = redisCommand(pContext, "hdel group:%s %s", arg[1], name_temp);
 					reply = redisCommand(pContext, "hdel %s:group %s", name_temp, arg[1]);
 					printf("Leave accept !\n");
 				}
@@ -470,6 +469,88 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				}
 			}
 
+		}
+		else if(strcmp(arg[0], "remove") == 0)
+		{
+			count_list_update(count_list, first_time);
+			reply = redisCommand(pContext, "keys group:%s", arg[1]);
+			
+			if(reply->elements == 0)
+			{
+				printf("group not found !\n");
+			}
+			else
+			{
+				reply = redisCommand(pContext, "hget group:%s owner", arg[1]);
+				if(strcmp(reply->str, name_temp) != 0)
+				{
+					printf("You don't have permission !\n");
+				}
+				else
+				{
+
+					//從第二個參數開始
+					int count = 2;
+					while(arg[count] != NULL)
+					{
+						reply = redisCommand(pContext, "keys client:%s", arg[count]);
+						if(reply->elements == 0)
+						{
+							printf("%s not found !\n", arg[count]);
+						}
+						else if(strcmp(arg[count], name_temp) == 0)
+						{
+							printf("owner can't remove self\n");
+						}
+						else
+						{
+							
+							reply = redisCommand(pContext, "hexists group:%s %s", arg[1], arg[count]);
+							if(reply->integer == 1)
+							{
+								reply = redisCommand(pContext, "hdel group:%s %s", arg[1], arg[count]);
+								reply = redisCommand(pContext, "hdel %s:group %s", arg[count], arg[1]);
+								printf("%s remove success !\n", arg[count]);
+							}	
+							else
+							{
+								printf("%s is not in group !\n", arg[count]);
+							}
+						}
+						count++;
+					}
+				}
+			}
+		}
+		else if(strcmp(arg[0], "delgroup") == 0)
+		{
+			count_list_update(count_list, first_time);
+			reply = redisCommand(pContext, "keys group:%s", arg[1]);
+			
+			if(reply->elements == 0)
+			{
+				printf("group not found !\n");
+			}
+			else
+			{
+				reply = redisCommand(pContext, "hget group:%s owner", arg[1]);
+				if(strcmp(reply->str, name_temp) != 0)
+				{
+					printf("You don't have permission !\n");
+				}
+				else
+				{
+					reply = redisCommand(pContext, "hkeys group:%s", arg[1]);
+					
+					for(int i = 1; i < reply->elements; i++)
+					{
+						reply_2 = redisCommand(pContext, "hdel %s:group %s", reply->element[i]->str, arg[1]);
+					}
+					
+					reply = redisCommand(pContext, "del group:%s", arg[1]);
+					printf("Group delete success !\n");
+				}
+			}
 		}
 		else if(strcmp(arg[0], "quit") == 0)
 		{
