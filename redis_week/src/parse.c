@@ -127,6 +127,13 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				mailto_type = 1;
 				space_split = strtok_r(NULL, "<", &save_s);
 				space_split = strtok_r(space_split, " \n", &save_s);
+				
+				if(space_split == NULL)
+				{
+					printf("please input redirect command !\n");
+					break;
+				}
+				
 				redirect_arg[0] = space_split;
 				
 				while(1)
@@ -151,11 +158,23 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				{
 					command_need_fork(redirect_arg[0], sizeof(redirect_arg[0]), redirect_arg, redirect_buffer, "<", count_list);
 				}
+				else
+				{
+					printf("Unknow redirect command: [%s].\n", redirect_arg[0]);
+					break;
+				}
 			}
 			else
 			{
 				arg[3] = NULL;
 			}
+		}
+		else if(strcmp(arg[0], "gyell") == 0)
+		{
+			space_split = strtok_r(NULL, " \n", &save_s);
+			arg[1] = space_split;
+			arg[2] = save_s;
+			arg[3] = NULL;
 		}
 		else
 		{
@@ -309,6 +328,13 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		else if(strcmp(arg[0], "mailto") == 0)
 		{
 			count_list_update(count_list, first_time);
+			
+			if(arg[1] == NULL)
+			{
+				printf("please input target name !\n");
+				break;
+			}
+			
 			reply = redisCommand(pContext, "keys client:%s", arg[1]);
 			
 			if(reply->elements == 0)
@@ -317,6 +343,13 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 			}
 			else
 			{
+				if(*arg[2] == '\0')
+				{
+					printf("please input message !\n");
+					break;
+				}
+				
+
 				reply = redisCommand(pContext, "incr mailbox:%s", arg[1]);
 				
 				reply = redisCommand(pContext, "get mailbox:%s", arg[1]);
@@ -349,6 +382,13 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		else if(strcmp(arg[0], "delmail") == 0)
 		{
 			count_list_update(count_list, first_time);
+			
+			if(arg[1] == NULL)
+			{
+				printf("please input mail id !\n");
+				break;
+			}
+			
 			reply = redisCommand(pContext, "keys mail:%s:%s",name_temp, arg[1]);
 			
 			if(reply->elements == 0)
@@ -364,6 +404,13 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		else if(strcmp(arg[0], "creategroup") == 0)
 		{
 			count_list_update(count_list, first_time);
+			
+			if(arg[1] == NULL)
+			{
+				printf("please input group name !\n");
+				break;
+			}
+			
 			reply = redisCommand(pContext, "keys group:%s", arg[1]);
 			
 			if(reply->elements == 0)
@@ -401,6 +448,13 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		else if(strcmp(arg[0], "addto") == 0)
 		{
 			count_list_update(count_list, first_time);
+			
+			if(arg[1] == NULL)
+			{
+				printf("please input group name !\n");
+				break;
+			}
+			
 			reply = redisCommand(pContext, "keys group:%s", arg[1]);
 			
 			if(reply->elements == 0)
@@ -416,6 +470,11 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				}
 				else
 				{
+					if(arg[2] == NULL)
+					{
+						printf("please input target !\n");
+						break;
+					}
 
 					//從第二個參數開始
 					int count = 2;
@@ -448,6 +507,14 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		}
 		else if(strcmp(arg[0], "leavegroup") == 0)
 		{
+			count_list_update(count_list, first_time);
+			
+			if(arg[1] == NULL)
+			{
+				printf("please input group name !\n");
+				break;
+			}
+			
 			reply = redisCommand(pContext, "keys group:%s", arg[1]);
 			
 			if(reply->elements == 0)
@@ -473,6 +540,13 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		else if(strcmp(arg[0], "remove") == 0)
 		{
 			count_list_update(count_list, first_time);
+			
+			if(arg[1] == NULL)
+			{
+				printf("please input group name !\n");
+				break;
+			}
+			
 			reply = redisCommand(pContext, "keys group:%s", arg[1]);
 			
 			if(reply->elements == 0)
@@ -488,6 +562,11 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 				}
 				else
 				{
+					if(arg[2] == NULL)
+					{
+						printf("please input target !\n");
+						break;
+					}
 
 					//從第二個參數開始
 					int count = 2;
@@ -525,6 +604,13 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 		else if(strcmp(arg[0], "delgroup") == 0)
 		{
 			count_list_update(count_list, first_time);
+			
+			if(arg[1] == NULL)
+			{
+				printf("please input group name !\n");
+				break;
+			}
+			
 			reply = redisCommand(pContext, "keys group:%s", arg[1]);
 			
 			if(reply->elements == 0)
@@ -551,6 +637,32 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 					printf("Group delete success !\n");
 				}
 			}
+		}
+		else if(strcmp(arg[0], "gyell") == 0)
+		{
+			count_list_update(count_list, first_time);
+			if(arg[1] == NULL)
+			{
+				printf("please input group name !\n");
+				break;
+			}
+			
+
+			reply = redisCommand(pContext, "keys group:%s", arg[1]);
+			
+			if(reply->elements == 0)
+			{
+				printf("group not found !\n");
+				break;
+			}
+
+
+			if(*arg[2] == '\0')
+			{
+				printf("please input message !\n");
+				break;
+			}
+
 		}
 		else if(strcmp(arg[0], "quit") == 0)
 		{
