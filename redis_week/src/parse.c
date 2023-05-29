@@ -483,7 +483,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 						reply = redisCommand(pContext, "keys client:%s", arg[count]);
 						if(reply->elements == 0)
 						{
-							printf("%s not found !\n", arg[count]);
+							reply = redisCommand(pContext, "rpush %s:addto:not_found %s",name_temp, arg[count]);
 						}
 						else
 						{
@@ -491,16 +491,49 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 							reply = redisCommand(pContext, "hexists group:%s %s", arg[1], arg[count]);
 							if(reply->integer == 1)
 							{
-								printf("%s already in group !\n", arg[count]);
+								reply = redisCommand(pContext, "rpush %s:addto:in_group %s",name_temp, arg[count]);
 							}	
 							else
 							{
 								reply = redisCommand(pContext, "hmset group:%s %s 0", arg[1], arg[count]);
 								reply = redisCommand(pContext, "hmset %s:group %s %s", arg[count], arg[1], name_temp);
-								printf("%s add success !\n", arg[count]);
+								reply = redisCommand(pContext, "rpush %s:addto:success %s",name_temp, arg[count]);
 							}
 						}
 						count++;
+					}
+
+					reply = redisCommand(pContext, "lrange %s:addto:not_found 0 -1",name_temp);
+					if(reply->elements != 0)
+					{
+						for(int i = 0; i < reply->elements; i++)
+						{
+							printf("%s ", reply->element[i]->str);
+						}
+						printf("not found !\n");
+						reply = redisCommand(pContext, "del %s:addto:not_found",name_temp);
+					}
+
+					reply = redisCommand(pContext, "lrange %s:addto:in_group 0 -1",name_temp);
+					if(reply->elements != 0)
+					{
+						for(int i = 0; i < reply->elements; i++)
+						{
+							printf("%s ", reply->element[i]->str);
+						}
+						printf("already in group !\n");
+						reply = redisCommand(pContext, "del %s:addto:in_group",name_temp);
+					}
+					
+					reply = redisCommand(pContext, "lrange %s:addto:success 0 -1",name_temp);
+					if(reply->elements != 0)
+					{
+						for(int i = 0; i < reply->elements; i++)
+						{
+							printf("%s ", reply->element[i]->str);
+						}
+						printf("add success !\n");
+						reply = redisCommand(pContext, "del %s:addto:success",name_temp);
 					}
 				}
 			}
@@ -575,7 +608,7 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 						reply = redisCommand(pContext, "keys client:%s", arg[count]);
 						if(reply->elements == 0)
 						{
-							printf("%s not found !\n", arg[count]);
+							reply = redisCommand(pContext, "rpush %s:remove:not_found %s",name_temp, arg[count]);
 						}
 						else if(strcmp(arg[count], name_temp) == 0)
 						{
@@ -589,14 +622,47 @@ int parse(char * command, dllNode_t * count_list, int connect_fd, int server_op_
 							{
 								reply = redisCommand(pContext, "hdel group:%s %s", arg[1], arg[count]);
 								reply = redisCommand(pContext, "hdel %s:group %s", arg[count], arg[1]);
-								printf("%s remove success !\n", arg[count]);
+								reply = redisCommand(pContext, "rpush %s:remove:success %s",name_temp, arg[count]);
 							}	
 							else
 							{
-								printf("%s is not in group !\n", arg[count]);
+								reply = redisCommand(pContext, "rpush %s:remove:not_in_group %s",name_temp, arg[count]);
 							}
 						}
 						count++;
+					}
+
+					reply = redisCommand(pContext, "lrange %s:remove:not_found 0 -1",name_temp);
+					if(reply->elements != 0)
+					{
+						for(int i = 0; i < reply->elements; i++)
+						{
+							printf("%s ", reply->element[i]->str);
+						}
+						printf("not found !\n");
+						reply = redisCommand(pContext, "del %s:remove:not_found",name_temp);
+					}
+
+					reply = redisCommand(pContext, "lrange %s:remove:not_in_group 0 -1",name_temp);
+					if(reply->elements != 0)
+					{
+						for(int i = 0; i < reply->elements; i++)
+						{
+							printf("%s ", reply->element[i]->str);
+						}
+						printf("not in group !\n");
+						reply = redisCommand(pContext, "del %s:remove:not_in_group",name_temp);
+					}
+					
+					reply = redisCommand(pContext, "lrange %s:remove:success 0 -1",name_temp);
+					if(reply->elements != 0)
+					{
+						for(int i = 0; i < reply->elements; i++)
+						{
+							printf("%s ", reply->element[i]->str);
+						}
+						printf("remove success !\n");
+						reply = redisCommand(pContext, "del %s:remove:success",name_temp);
 					}
 				}
 			}
